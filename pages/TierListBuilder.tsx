@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TierRow, TierBuilderItem, Show, User, TierList } from '../types';
@@ -754,7 +753,7 @@ const TierListBuilder: React.FC<TierListBuilderProps> = ({ onNavigate }) => {
                     <div className="flex items-center justify-between border-b border-gray-800 pb-4">
                          <div>
                             <h1 className="text-4xl font-extrabold tracking-tight text-white mb-1">{listTitle || 'My Tier List'}</h1>
-                            <p className="text-gray-500 text-sm font-medium">Created on AnimesMix</p>
+                            <p className="text-gray-500 text-sm font-medium">Created on AnimeLab</p>
                          </div>
                          <div className="opacity-80 scale-125 origin-right"><Logo /></div>
                     </div>
@@ -786,7 +785,7 @@ const TierListBuilder: React.FC<TierListBuilderProps> = ({ onNavigate }) => {
                          ))}
                     </div>
                     <div className="mt-auto pt-6 text-center text-gray-600 text-sm font-semibold tracking-wide uppercase">
-                        animesmix.com
+                        animelab.org
                     </div>
                 </div>
             </div>

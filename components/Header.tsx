@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Logo, MenuIcon, CloseIcon, SearchIconV2, SunIcon, MoonIcon, BellIcon
@@ -133,7 +132,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, isLoggedIn, onLogin, onLogo
             <div className="fixed top-0 left-0 right-0 z-50 flex flex-col">
                 {/* Migration Notice Banner */}
                 <div className="bg-brand-primary text-black text-center py-2 px-4 text-sm font-bold relative z-[60]">
-                    Anime and Manga have been moved to <a href="https://www.animesmix.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition-colors">animesmix.com</a>
+                    Anime and Manga have been moved to <a href="https://www.animelab.org" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition-colors">animelab.org</a>
                 </div>
 
                 <header 
