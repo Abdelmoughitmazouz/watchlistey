@@ -244,6 +244,10 @@ const App = () => {
                     <HeroSection shows={shows} userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} onNavigate={handleNavigate} />
                     <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-12 mt-8">
                         <ContentCarousel title={t('nav.movies')} shows={movies} onShowClick={(s) => handleNavigate(`/movie/${slugify(s.title)}`, s)} userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} />
+                        
+                        {/* Display Ad Unit on Home Page */}
+                        <AdSense slot="5904887585" />
+
                         <ContentCarousel title={t('nav.tv')} shows={tvShows} onShowClick={(s) => handleNavigate(`/tv/${slugify(s.title)}`, s)} userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} />
                         <PromoSection userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} shows={movies} onNavigate={handleNavigate} />
                         <ContentCarousel title={t('genres.Action')} shows={actionMovies} onShowClick={(s) => handleNavigate(`/movie/${slugify(s.title)}`, s)} userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} />

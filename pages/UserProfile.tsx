@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, Show, ListStatus, ListItem } from '../types';
 import { PlusIcon, VerifiedBadgeIcon, XIcon, FacebookIconV2, InstagramIcon, YouTubeIcon, SettingsIconV2 } from '../constants';
 import UserShowList from '../components/UserShowList';
 import { Avatar } from '../components/Avatar';
+import AdSense from '../components/AdSense';
 import { useTranslation } from 'react-i18next';
 import { getShowDetails, getPersonDetails, mapTMDBToShow } from '../lib/tmdb';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
@@ -40,7 +40,6 @@ const UserProfile: React.FC<UserProfileProps> = ({
 
     // Handle Privacy
     const isPrivate = user.list_privacy === 'private' && !isOwnProfile;
-    // 'followers' privacy not fully implemented, treating as public for now or same as private if not own.
     
     // Social Links
     const socialLinks = [
@@ -125,17 +124,30 @@ const UserProfile: React.FC<UserProfileProps> = ({
                     </div>
                 ) : (
                     <div className="min-h-[400px]">
-                        <UserShowList 
-                            userList={user.list || {}}
-                            userCharacters={user.characters}
-                            userFavorites={user.favorites}
-                            shows={shows}
-                            onNavigate={onNavigate}
-                            handleUpdateListStatus={isOwnProfile ? handleUpdateListStatus : undefined}
-                            handleToggleFavorite={isOwnProfile ? handleToggleFavorite : undefined}
-                            layout="sidebar"
-                            defaultTab={activeTab === 'All' ? 'All' : activeTab}
-                        />
+                        {/* Custom Layout for Profile to include Sidebar Ad */}
+                        <div className="flex flex-col lg:flex-row gap-8">
+                             <div className="flex-1 min-w-0">
+                                <UserShowList 
+                                    userList={user.list || {}}
+                                    userCharacters={user.characters}
+                                    userFavorites={user.favorites}
+                                    shows={shows}
+                                    onNavigate={onNavigate}
+                                    handleUpdateListStatus={isOwnProfile ? handleUpdateListStatus : undefined}
+                                    handleToggleFavorite={isOwnProfile ? handleToggleFavorite : undefined}
+                                    layout="sidebar"
+                                    defaultTab={activeTab === 'All' ? 'All' : activeTab}
+                                />
+                             </div>
+                             {/* Optional Sidebar Ad Column for Desktop */}
+                             {!isOwnProfile && (
+                                <div className="hidden xl:block w-72 flex-shrink-0">
+                                    <div className="sticky top-24">
+                                        <AdSense slot="5904887585" format="fluid" className="mt-0" />
+                                    </div>
+                                </div>
+                             )}
+                        </div>
                     </div>
                 )}
             </div>
