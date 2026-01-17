@@ -718,7 +718,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                             onClick={() => scrollCast('next')} 
                                             className="absolute end-0 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/80 dark:bg-black/50 rounded-full shadow-md hover:bg-white dark:hover:bg-black/80 text-gray-800 dark:text-white transition-all"
                                         >
-                                            <ChevronRightIcon className="w-6 h-6 rtl:rotate-180" />
+                                            <ChevronRightIcon className="w-5 h-5 rtl:rotate-180" />
                                         </button>
                                     )}
                                     <div ref={castScrollRef} className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 snap-x">
@@ -802,7 +802,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                 {moreLikeThis.length > 0 && <div className="mt-16"><ContentCarousel title={t('details.more_like_this')} shows={moreLikeThis} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; if (s.is_anime) prefix = '/anime/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} /></div>}
 
                 {/* Ad Placement 1: Above Comments */}
-                <AdSense slot="5904887585" className="border-y border-gray-100 dark:border-gray-800 py-4" />
+                <AdSense slot="5904887585" format="auto" />
 
                 <div className="mt-16 w-full">
                     <CommentsSection showId={show.id} onViewUser={handleViewUser} currentUser={currentUser} />

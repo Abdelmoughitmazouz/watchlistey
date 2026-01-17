@@ -246,7 +246,7 @@ const App = () => {
                         <ContentCarousel title={t('nav.movies')} shows={movies} onShowClick={(s) => handleNavigate(`/movie/${slugify(s.title)}`, s)} userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} />
                         
                         {/* Display Ad Unit on Home Page */}
-                        <AdSense slot="5904887585" />
+                        <AdSense slot="5904887585" format="auto" />
 
                         <ContentCarousel title={t('nav.tv')} shows={tvShows} onShowClick={(s) => handleNavigate(`/tv/${slugify(s.title)}`, s)} userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} />
                         <PromoSection userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} shows={movies} onNavigate={handleNavigate} />
