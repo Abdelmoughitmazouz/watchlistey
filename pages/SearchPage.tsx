@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { Show, ListItem, ListStatus } from '../types';
 import { SearchIconV2, CaretDownIcon, FilterIcon, CloseIcon } from '../constants';
@@ -6,6 +5,7 @@ import { searchMulti, slugify, discoverMedia, getPopularPeople } from '../lib/tm
 import { searchUsers } from '../lib/supabaseClient';
 import ShowCard from '../components/ShowCard';
 import FilterSidebar from '../components/FilterSidebar';
+import AdSense from '../components/AdSense';
 import { useTranslation } from 'react-i18next';
 
 interface SearchPageProps {
@@ -20,7 +20,6 @@ interface SearchPageProps {
 
 const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, userFavorites, userCharacters, handleUpdateListStatus, handleToggleFavorite }) => {
     const { t } = useTranslation();
-    // -- 1. INITIAL STATE FROM URL --
     const getInitialParams = () => {
         const params = new URLSearchParams(window.location.search);
         return {
@@ -37,7 +36,6 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
     };
 
     const initial = getInitialParams();
-
     const [query, setQuery] = useState(initial.q);
     const [results, setResults] = useState<Show[]>([]);
     const [totalResults, setTotalResults] = useState(0);
@@ -45,8 +43,6 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
     const [loadingMore, setLoadingMore] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
-    
-    // Filter States
     const [selectedType, setSelectedType] = useState(initial.type);
     const [selectedGenres, setSelectedGenres] = useState<string[]>(initial.genres);
     const [minRating, setMinRating] = useState(initial.rating);
@@ -55,11 +51,9 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
     const [seasonCount, setSeasonCount] = useState(initial.seasonCount);
     const [language, setLanguage] = useState(initial.language);
     const [minEpisodes, setMinEpisodes] = useState(initial.minEpisodes);
-    
     const [sortBy, setSortBy] = useState('relevance');
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
-    // -- 2. URL SYNC --
     useEffect(() => {
         const params = new URLSearchParams();
         if (query) params.set('q', query);
@@ -71,14 +65,12 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
         if (seasonCount) params.set('seasonCount', seasonCount);
         if (language) params.set('language', language);
         if (minEpisodes) params.set('minEpisodes', minEpisodes);
-
         const newUrl = `${window.location.pathname}?${params.toString()}`;
         if (newUrl !== window.location.pathname + window.location.search) {
             window.history.replaceState({}, '', newUrl);
         }
     }, [query, selectedType, selectedGenres, year, minRating, status, seasonCount, language, minEpisodes]);
 
-    // Listen to external URL changes
     useEffect(() => {
         const handlePopState = () => {
             const p = getInitialParams();
@@ -96,8 +88,6 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
         return () => window.removeEventListener('popstate', handlePopState);
     }, []);
 
-
-    // -- 3. DATA FETCHING --
     useEffect(() => {
         const fetchInitialData = async () => {
             setLoading(true);
@@ -105,72 +95,49 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
             setHasMore(true);
             setResults([]); 
             setTotalResults(0);
-
             try {
                 let newResults: Show[] = [];
                 let total = 0;
-
                 if (selectedType === 'user') {
-                    // USER SEARCH
                     const data = await searchUsers(query, 1);
                     newResults = data.results;
                     total = data.total_results;
-                    setHasMore(newResults.length === 20); // Basic pagination check
+                    setHasMore(newResults.length === 20);
                 } else if (selectedType === 'all') {
-                    // ALL = TMDB (if query present)
                     if (query.trim()) {
                         const tmdbData = await searchMulti(query, 1);
                         newResults = tmdbData.results;
                         total = tmdbData.total_results;
                         setHasMore(tmdbData.results.length > 0);
                     } else {
-                        // Discover (TMDB)
-                        // If type is 'all' without query, discover will mix movie/tv if API supported but usually discovers per type.
-                        // discoverMedia in lib/tmdb handles 'all' by fetching both and merging.
-                        const tmdbData = await discoverMedia('all', {
-                            genres: selectedGenres,
-                            minRating: minRating,
-                            year: year,
-                            isAnime: false,
-                            language: language
-                        }, 1);
+                        const tmdbData = await discoverMedia('all', { genres: selectedGenres, minRating, year, isAnime: false, language }, 1);
                         newResults = tmdbData.results;
                         total = tmdbData.total_results; 
                         setHasMore(true);
                     }
                 } else if (selectedType === 'person') {
-                    // PERSON SEARCH
                     if (query.trim()) {
                         const data = await searchMulti(query, 1);
                         newResults = data.results.filter(i => i.media_type === 'person');
-                        total = data.total_results; // Approximate since searchMulti returns mixed
+                        total = data.total_results;
                     } else {
-                        // Popular People
                         const people = await getPopularPeople(1);
                         newResults = people;
-                        total = 10000; // API Limit usually
+                        total = 10000;
                     }
                     if (newResults.length < 20) setHasMore(false);
                 } else {
-                    // STANDARD TMDB (Movie/TV)
                     if (query.trim()) {
                         const data = await searchMulti(query, 1);
                         newResults = data.results.filter(i => i.media_type === selectedType);
                         total = data.total_results;
                     } else {
-                        const data = await discoverMedia(selectedType, {
-                            genres: selectedGenres,
-                            minRating: minRating,
-                            year: year,
-                            isAnime: false,
-                            language: language
-                        }, 1);
+                        const data = await discoverMedia(selectedType, { genres: selectedGenres, minRating, year, isAnime: false, language }, 1);
                         newResults = data.results;
                         total = data.total_results;
                     }
                     if (newResults.length < 20) setHasMore(false);
                 }
-
                 setResults(newResults);
                 setTotalResults(total);
             } catch (error) {
@@ -180,21 +147,16 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
                 setLoading(false);
             }
         };
-
         const timeoutId = setTimeout(fetchInitialData, 500);
         return () => clearTimeout(timeoutId);
-
     }, [query, selectedType, selectedGenres, minRating, year, status, language]); 
 
     const handleLoadMore = useCallback(async () => {
         if (loadingMore || !hasMore || loading) return;
-        
         setLoadingMore(true);
         const nextPage = page + 1;
-
         try {
             let newResults: Show[] = [];
-            
             if (selectedType === 'user') {
                 const data = await searchUsers(query, nextPage);
                 newResults = data.results;
@@ -205,13 +167,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
                     newResults = tmdbData.results;
                     if (tmdbData.results.length === 0) setHasMore(false);
                 } else {
-                    const tmdbData = await discoverMedia('all', {
-                        genres: selectedGenres,
-                        minRating: minRating,
-                        year: year,
-                        isAnime: false,
-                        language: language
-                    }, nextPage);
+                    const tmdbData = await discoverMedia('all', { genres: selectedGenres, minRating, year, isAnime: false, language }, nextPage);
                     newResults = tmdbData.results;
                     if (tmdbData.results.length === 0) setHasMore(false);
                 }
@@ -225,23 +181,15 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
                 }
                 if (newResults.length < 20) setHasMore(false);
             } else {
-                // Movie/TV
                 if (query.trim()) {
                     const data = await searchMulti(query, nextPage);
                     newResults = data.results.filter(i => i.media_type === selectedType);
                 } else {
-                    const data = await discoverMedia(selectedType, {
-                        genres: selectedGenres,
-                        minRating: minRating,
-                        year: year,
-                        isAnime: false,
-                        language: language
-                    }, nextPage);
+                    const data = await discoverMedia(selectedType, { genres: selectedGenres, minRating, year, isAnime: false, language }, nextPage);
                     newResults = data.results;
                 }
                 if (newResults.length < 20) setHasMore(false);
             }
-
             if (newResults.length > 0) {
                 setResults(prev => {
                     const existingIds = new Set(prev.map(i => i.id));
@@ -260,34 +208,28 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
         }
     }, [query, selectedType, selectedGenres, minRating, year, status, language, page, hasMore, loadingMore, loading]);
 
-    // Infinite Scroll Observer
     const observer = useRef<IntersectionObserver | null>(null);
     const lastElementRef = useCallback((node: HTMLDivElement) => {
         if (loading || loadingMore) return;
         if (observer.current) observer.current.disconnect();
-        
         observer.current = new IntersectionObserver(entries => {
             if (entries[0].isIntersecting && hasMore) {
                 handleLoadMore();
             }
         });
-        
         if (node) observer.current.observe(node);
     }, [loading, loadingMore, hasMore, handleLoadMore]);
-
 
     const handleShowClick = (show: Show) => {
         if (show.media_type === 'user' && show.username) {
             onNavigate(`/u/${show.username}`);
             return;
         }
-
         const slug = slugify(show.title);
         if (show.media_type === 'person') {
             onNavigate(`/person/${slug}`, show);
         } else {
             const prefix = show.media_type === 'tv' ? '/tv/' : '/movie/';
-            // Anime handling is implicit in TMDB (TV with genres), but use consistent routing
             if (show.is_anime) onNavigate(`/anime/${slug}`, show);
             else onNavigate(`${prefix}${slug}`, show);
         }
@@ -325,10 +267,8 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
         + (language ? 1 : 0)
         + (minEpisodes ? 1 : 0);
 
-    // Client-side filtering
     const filteredResults = useMemo(() => {
         let filtered = [...results];
-
         if (selectedType !== 'user' && selectedType !== 'person') {
              if (query.trim()) {
                 if (selectedType !== 'all') {
@@ -361,15 +301,13 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
                  });
             }
         }
-
-        // Apply Sort
         return filtered.sort((a, b) => {
             if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
             if (sortBy === 'newest') return (b.year || 0) - (a.year || 0);
             if (sortBy === 'oldest') return (a.year || 0) - (b.year || 0);
             if (sortBy === 'name_asc') return a.title.localeCompare(b.title);
             if (sortBy === 'name_desc') return b.title.localeCompare(a.title);
-            return 0; // Default or relevance
+            return 0;
         });
     }, [results, query, selectedType, selectedGenres, minRating, year, status, seasonCount, language, minEpisodes, sortBy]);
 
@@ -402,17 +340,19 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
                         onSearchChange={(val) => setQuery(val)}
                     />
 
-                    {/* Main Content */}
                     <div className="flex-1 min-w-0">
                         <div className="lg:hidden mb-4 flex justify-end">
                              <button 
                                 onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
                                 className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200"
-                            >
+                             >
                                 <FilterIcon className="w-5 h-5" />
                                 {t('search.filters')} {activeFiltersCount > 0 && `(${activeFiltersCount})`}
                             </button>
                         </div>
+
+                        {/* Ad Placement: Top of results Unit */}
+                        <AdSense slot="5904887585" className="mb-8" />
 
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -460,19 +400,12 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
                                         />
                                     ))}
                                 </div>
-                                
                                 {hasMore && (
-                                    <div 
-                                        ref={lastElementRef} 
-                                        className="flex justify-center py-8"
-                                    >
+                                    <div ref={lastElementRef} className="flex justify-center py-8">
                                         {loadingMore ? (
                                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 dark:border-gray-400"></div>
                                         ) : (
-                                            <button 
-                                                onClick={handleLoadMore}
-                                                className="px-6 py-2 bg-white dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors font-medium"
-                                            >
+                                            <button onClick={handleLoadMore} className="px-6 py-2 bg-white dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors font-medium">
                                                 Load More
                                             </button>
                                         )}
@@ -483,16 +416,8 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
                             <div className="text-center py-20 bg-white dark:bg-[#1e1e1e] rounded-lg border border-gray-200 dark:border-gray-800 border-dashed">
                                 <SearchIconV2 className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
                                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('search.no_results')}</h3>
-                                <p className="mt-1 text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-                                    We couldn't find any matches with the current filters. Try adjusting your search or filters.
-                                </p>
                                 {activeFiltersCount > 0 && (
-                                    <button 
-                                        onClick={clearFilters}
-                                        className="mt-4 px-4 py-2 bg-gray-100 dark:bg-[#2a2a2a] text-gray-700 dark:text-gray-200 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-[#333] transition-colors"
-                                    >
-                                        {t('search.clear_all')}
-                                    </button>
+                                    <button onClick={clearFilters} className="mt-4 px-4 py-2 bg-gray-100 dark:bg-[#2a2a2a] text-gray-700 dark:text-gray-200 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-[#333] transition-colors">{t('search.clear_all')}</button>
                                 )}
                             </div>
                         )}

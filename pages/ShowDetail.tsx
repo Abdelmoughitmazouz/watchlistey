@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Show, User, ListStatus, ListItem, CastMember, Episode, AppNotification, Subscription } from '../types';
 import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, StarIcon, ArrowRightIcon, XIcon, FacebookIconV2, InstagramIcon, LinkIcon, UserPlaceholderIcon, CaretDownIcon, CalendarIcon } from '../constants';
@@ -13,6 +12,7 @@ import { useSEO } from '../hooks/useSEO';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import EpisodeCountdown from '../components/EpisodeCountdown';
 import NextEpisodeCard from '../components/NextEpisodeCard';
+import AdSense from '../components/AdSense';
 import { useTranslation } from 'react-i18next';
 
 interface ShowDetailProps {
@@ -43,25 +43,19 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
     useEffect(() => {
         setShow(initialShow);
         setIsDescriptionExpanded(false);
-        // Default to season 1 if available and not already set
         if (initialShow.media_type === 'tv' && !initialShow.is_manga) {
              if (initialShow.seasons && initialShow.seasons.length > 0) {
-                 // Find season 1 or the first available season
                  const firstSeason = initialShow.seasons.find(s => s.season_number === 1) || initialShow.seasons[0];
                  setSelectedSeason(firstSeason.season_number);
              }
         }
     }, [initialShow]);
 
-    // Fetch Episodes when selected season changes
     useEffect(() => {
         const fetchEpisodes = async () => {
             if (selectedSeason === null || !show.id || show.media_type !== 'tv') return;
-            
             setLoadingEpisodes(true);
             try {
-                // Check if we already have episodes in the show object (unlikely for full season list unless cached)
-                // For now, always fetch to ensure fresh data or rely on tmdb lib caching
                 const seasonData = await getSeasonDetails(show.id, selectedSeason, i18n.language);
                 if (seasonData && seasonData.episodes) {
                     setSeasonEpisodes(seasonData.episodes);
@@ -72,7 +66,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                 setLoadingEpisodes(false);
             }
         };
-        
         fetchEpisodes();
     }, [selectedSeason, show.id, show.media_type, i18n.language]);
 
@@ -86,13 +79,11 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
         let isMounted = true;
         const fetchRealCount = async () => {
             if (!show.id) return;
-            
             if (isSupabaseConfigured) {
                 const { count, error } = await supabase
                     .from('favorites')
                     .select('*', { count: 'exact', head: true })
                     .eq('show_id', show.id);
-                
                 if (isMounted && !error && count !== null) {
                     setDbFavCount(count);
                     setInitialFavState(isFavorite); 
@@ -101,39 +92,29 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                 if (isMounted) setDbFavCount(show.vote_count || 0);
             }
         };
-        
         fetchRealCount();
-        
         return () => { isMounted = false; };
     }, [show.id]); 
 
     const realFavoritesCount = Math.max(0, dbFavCount + (isFavorite ? 1 : 0) - (initialFavState ? 1 : 0));
 
-    // Data Hydration Effect (Fetches full details if missing)
     const [isHydrating, setIsHydrating] = useState(false);
     const hydratedIdRef = useRef<number | null>(null);
 
     useEffect(() => {
         const fetchFullDetails = async () => {
-            // Prevent duplicate hydration for same show ID to avoid infinite loops if fields remain empty
             if (hydratedIdRef.current === show.id || isHydrating) return;
-
             const isMissing = (arr?: any[]) => !arr || arr.length === 0;
             let needsHydration = false;
-
             if ((show.media_type === 'movie' || show.media_type === 'tv') && isMissing(show.cast)) {
-                // TMDB Hydration for Movies/TV
                 needsHydration = true;
             }
-
             if (!needsHydration) {
                 hydratedIdRef.current = show.id;
                 return;
             }
-
             setIsHydrating(true);
             let fullShow: Show | null = null;
-
             try {
                 if (show.media_type === 'movie' || show.media_type === 'tv') {
                     fullShow = await getShowDetails(show.id, show.media_type, true, i18n.language);
@@ -141,55 +122,41 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
             } catch (e) {
                 console.error("Hydration failed", e);
             }
-
             if (fullShow) {
                 setShow(prev => ({ ...prev, ...fullShow }));
                 onUpdateShow(fullShow);
             }
-            
-            // Mark as hydrated regardless of result to prevent retry loops on this ID
             hydratedIdRef.current = show.id;
             setIsHydrating(false);
         };
-
         fetchFullDetails();
     }, [show.id, show.media_type, show.provider, i18n.language]);
 
-    // --- SEO Strategy Implementation ---
-    
-    // 1. Title Tag Strategy
     let seoTitle = '';
     if (show.media_type === 'season') {
         seoTitle = `${t('hero.seasons')} ${show.season_number} - ${show.parent_show_title} | Watchlistey`;
     } else if (show.is_anime) {
-        // Format: "{Title} Anime – Episodes, Reviews & Watchlist"
         seoTitle = `${show.title} Anime – Episodes, Reviews & Watchlist`;
     } else {
-        // Format: "{Title} ({Year}) – Rating, Cast, Plot & Watchlist"
         seoTitle = `${show.title} (${show.year}) – Rating, Cast, Plot & Watchlist`;
     }
 
-    // 2. Meta Description Strategy
     const creatorName = show.creators?.[0] || show.creator_persons?.[0]?.name || (show.networks?.[0]?.name);
     const mainCastNames = show.cast?.slice(0, 3).map(c => c.name).join(', ');
     
     let seoDesc = '';
     if (show.description) {
-        // 150-160 chars approx
-        // "Discover {Title} ({Year}). Directed by {Creator}. Featuring {Cast}. Add to your watchlist, rate, and find similar {Genre} titles."
         const base = `Discover ${show.title} (${show.year}).`;
         const middle = creatorName ? ` Created by ${creatorName}.` : '';
         const castText = mainCastNames ? ` Featuring ${mainCastNames}.` : '';
         const end = ` Add to your watchlist, see rating (${show.rating?.toFixed(1)}/10), and find similar ${show.genres?.[0] || ''} titles on Watchlistey.`;
-        
         seoDesc = `${base}${middle}${castText}${end}`.substring(0, 160).trim();
     } else {
         seoDesc = `Track ${show.title} on Watchlistey. Build your ultimate watchlist, rate content, and discover new favorites.`;
     }
     
-    useSEO(seoTitle, seoDesc, show.image_url, show.title, true); // Pass true to skip default suffix
+    useSEO(seoTitle, seoDesc, show.image_url, show.title, true);
 
-    // 6. JSON-LD Schema
     const schemaType = show.media_type === 'tv' ? "TVSeries" : (show.is_anime ? "TVSeries" : "Movie");
     const hasReviews = show.vote_count && show.vote_count > 0;
 
@@ -221,23 +188,9 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
         "breadcrumb": {
             "@type": "BreadcrumbList",
             "itemListElement": [
-                {
-                    "@type": "ListItem",
-                    "position": 1,
-                    "name": "Home",
-                    "item": "https://watchlistey.com"
-                },
-                {
-                    "@type": "ListItem",
-                    "position": 2,
-                    "name": show.media_type === 'tv' ? 'TV Shows' : 'Movies',
-                    "item": `https://watchlistey.com/search?type=${show.media_type}`
-                },
-                {
-                    "@type": "ListItem",
-                    "position": 3,
-                    "name": show.title
-                }
+                { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://watchlistey.com" },
+                { "@type": "ListItem", "position": 2, "name": show.media_type === 'tv' ? 'TV Shows' : 'Movies', "item": `https://watchlistey.com/search?type=${show.media_type}` },
+                { "@type": "ListItem", "position": 3, "name": show.title }
             ]
         }
     };
@@ -260,14 +213,11 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
 
     const moreLikeThis = (show as any).recommendations || (recommendations.length > 0 ? recommendations : allShows.filter(s => s.id !== show.id && (s.genres?.some(g => show.genres?.includes(g)) || s.year === show.year)).slice(0, 12));
 
-    // 4. SEO Paragraph Generation
     const generateSeoParagraph = () => {
         if (!show.description) return null;
-        
         const genreText = show.genres?.join(', ') || 'various';
         const studioText = show.production_companies?.[0]?.name || show.networks?.[0]?.name || 'acclaimed studios';
         const similarTitles = moreLikeThis.slice(0, 2).map(s => s.title).join(' and ');
-        
         return (
             <div className="mt-12 bg-gray-50 dark:bg-[#151515] p-6 rounded-xl border border-gray-100 dark:border-gray-800">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3">About {show.title}</h2>
@@ -280,10 +230,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                     <p className="mt-4">
                         With a user rating of <strong>{show.rating?.toFixed(1)}/10</strong>, it stands out as a noteworthy entry in the {show.genres?.[0] || 'entertainment'} genre. 
                         Fans of {similarTitles ? `titles like ${similarTitles}` : 'similar stories'} will likely find this to be a perfect addition to their watchlist.
-                        {show.cast && show.cast.length > 0 && ` The production features performances by ${show.cast.slice(0, 3).map(c => c.name).join(', ')}, bringing the story to life.`}
-                    </p>
-                    <p className="mt-4">
-                        Track <strong>{show.title}</strong> on Watchlistey to keep up with your watching progress, rate episodes, and get personalized recommendations based on your unique taste.
                     </p>
                 </div>
             </div>
@@ -324,7 +270,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
         const slug = slugify(show.title);
         let prefix = show.media_type === 'tv' ? '/tv/' : '/movie/';
         if (show.is_anime) prefix = '/anime/';
-        
         onNavigate(`${prefix}${slug}/cast`);
     };
 
@@ -359,7 +304,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
         const date = new Date(dateStr);
         const month = date.getMonth();
         const year = date.getFullYear();
-        
         if (month >= 2 && month <= 4) return `Spring ${year}`;
         if (month >= 5 && month <= 7) return `Summer ${year}`;
         if (month >= 8 && month <= 10) return `Fall ${year}`;
@@ -380,8 +324,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
 
     const VISIBLE_CAST_LIMIT = 14;
     const visibleCast = show.cast?.slice(0, VISIBLE_CAST_LIMIT);
-    
-    // --- Cast Scroll Logic ---
     const castScrollRef = useRef<HTMLDivElement>(null);
     const [canScrollCastPrev, setCanScrollCastPrev] = useState(false);
     const [canScrollCastNext, setCanScrollCastNext] = useState(true);
@@ -413,10 +355,8 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
             const { clientWidth } = castScrollRef.current;
             const scrollAmount = clientWidth * 0.8;
             const isRTL = document.dir === 'rtl';
-            
             let left = direction === 'next' ? scrollAmount : -scrollAmount;
-            if (isRTL) left = -left; // Invert for RTL
-
+            if (isRTL) left = -left;
             castScrollRef.current.scrollBy({ left: left, behavior: 'smooth' });
         }
     };
@@ -424,9 +364,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
     const seasonShows = show.seasons?.map(season => ({
         id: season.id,
         title: season.name,
-        image_url: season.poster_path 
-            ? `https://image.tmdb.org/t/p/w500${season.poster_path}` 
-            : show.image_url,
+        image_url: season.poster_path ? `https://image.tmdb.org/t/p/w500${season.poster_path}` : show.image_url,
         backdrop_url: show.backdrop_url,
         description: season.overview,
         rating: show.rating, 
@@ -471,7 +409,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                 id: member.id,
                 title: member.name,
                 media_type: 'person',
-                is_staff: show.is_anime, // Mark as staff if anime
+                is_staff: show.is_anime,
                 image_url: member.profile_path || '',
                 backdrop_url: '',
                 rating: 0,
@@ -484,19 +422,14 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
 
     const networkLabel = show.is_anime ? t('details.studios') : t('details.networks');
     const productionLabel = show.is_anime ? t('details.producers') : t('details.production');
-    
     const networkData = show.is_anime ? show.production_companies : show.networks;
     const productionData = show.is_anime ? show.networks : show.production_companies;
 
-    // Description logic
     const DESCRIPTION_LIMIT = 300;
     const description = show.description || '';
     const shouldTruncate = description.length > DESCRIPTION_LIMIT;
-    const displayedDescription = isDescriptionExpanded || !shouldTruncate 
-        ? description 
-        : description.slice(0, DESCRIPTION_LIMIT).trim() + '...';
+    const displayedDescription = isDescriptionExpanded || !shouldTruncate ? description : description.slice(0, DESCRIPTION_LIMIT).trim() + '...';
 
-    // Handle Episode Click
     const handleEpisodeClick = (episode: Episode) => {
         const slug = slugify(isSeasonPage ? show.parent_show_title || show.title : show.title);
         const seasonNum = isSeasonPage ? show.season_number : selectedSeason;
@@ -505,7 +438,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
 
     return (
         <div className="bg-white dark:bg-[#0f0f0f] text-gray-900 dark:text-white transition-colors duration-200">
-            {/* Schema.org Injection */}
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }} />
 
             <div className="relative h-[50vh] min-h-[400px] md:h-[65vh] lg:h-[75vh]">
@@ -522,8 +454,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
             </div>
 
             <div className="max-w-7xl mx-auto px-4 md:px-8 pb-16">
-                
-                {/* 1. TOP SECTION: Poster | Header */}
                 <div className="relative z-10 -mt-24 md:-mt-48 flex flex-col md:flex-row gap-8 lg:gap-12 items-start">
                     <div className="w-48 md:w-64 lg:w-72 flex-shrink-0 flex flex-col gap-4">
                         <div className="aspect-[2/3] rounded-lg overflow-hidden ring-1 ring-black/10 dark:ring-white/10">
@@ -568,7 +498,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                         )}
                                     </h1>
                                 </div>
-                               
                                {isSeasonPage && (
                                    <div className="flex items-center gap-2 ms-4">
                                        <button 
@@ -590,7 +519,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                    </div>
                                )}
                            </div>
-                           
                             <div className="flex items-center space-x-4 rtl:space-x-reverse text-md text-gray-500 dark:text-gray-400 my-3">
                                 <span>{show.year}</span>
                                 {show.maturity && <span className="ring-1 ring-gray-400 dark:ring-gray-600 px-1.5 text-xs rounded">{show.maturity}</span>}
@@ -600,7 +528,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                     <span className="ms-1 font-semibold">{show.rating ? show.rating.toFixed(1) : '0'}/10</span>
                                 </div>
                             </div>
-
                             <div className="mb-6 max-w-2xl">
                                 <p className="text-gray-700 dark:text-gray-300 text-base md:text-lg whitespace-pre-line">
                                     {displayedDescription}
@@ -614,7 +541,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                     </button>
                                 )}
                             </div>
-                            
                             <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-6">
                                 <span className="font-semibold text-gray-700 dark:text-gray-300">{t('common.genres')}:</span>
                                 {show.genres?.map(genre => (
@@ -627,7 +553,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                     </button>
                                 ))}
                             </div>
-
                             {show.participants && show.participants.length > 0 && (
                                 <div className="flex flex-col gap-3 text-sm text-gray-500 dark:text-gray-400 mb-6">
                                     <span className="font-semibold text-gray-700 dark:text-gray-300">{t('details.friends_watching')}:</span>
@@ -642,8 +567,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                     </div>
                                 </div>
                             )}
-
-                            {/* Next Episode Card - Moved Here */}
                             {show.next_episode_to_air && (
                                 <NextEpisodeCard 
                                     episode={show.next_episode_to_air} 
@@ -654,22 +577,18 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                     onNavigate={onNavigate}
                                     showImage={show.image_url}
                                     showTitle={show.title}
-                                    showId={show.id} // Pass showId for subscription
-                                    isSubscribed={isSubscribed} // Pass subscription state
-                                    isAnime={show.is_anime} // Pass isAnime flag
+                                    showId={show.id}
+                                    isSubscribed={isSubscribed}
+                                    isAnime={show.is_anime}
                                 />
                             )}
                        </div>
                     </div>
                 </div>
 
-                {/* 2. Details Grid / Info */}
                 <div className="mt-12 flex flex-col lg:flex-row gap-8 lg:gap-12">
-                    
-                    {/* Left Column: Metadata (Information) - Fixed width matching poster */}
                     <div className="w-full lg:w-72 flex-shrink-0 space-y-8">
                         <div className="bg-transparent p-0 rounded-xl sticky top-24">
-                            {/* Social Links */}
                             <div className="flex gap-4 mb-8">
                                 {show.external_ids?.facebook_id && (
                                     <a href={`https://facebook.com/${show.external_ids.facebook_id}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#1877F2] transition-colors"><FacebookIconV2 className="w-6 h-6" /></a>
@@ -686,8 +605,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                     </a>
                                 )}
                             </div>
-
-                            {/* Detailed Information */}
                             <div className="space-y-4 text-sm">
                                 <div>
                                     <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.format')}</span>
@@ -711,9 +628,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                         </button>
                                     </div>
                                 )}
-                                
-                                {/* Manga removed, standard episodes display only */}
-                                
                                 {(show.number_of_seasons || 0) > 0 && (
                                     <div>
                                         <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('hero.seasons')}</span>
@@ -728,28 +642,12 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                         </button>
                                     </div>
                                 )}
-
                                 {(show.runtime || 0) > 0 && !show.is_manga && (
                                     <div>
                                         <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.runtime')}</span>
                                         <span className="text-gray-900 dark:text-white">{formatRuntime(show.runtime)}</span>
                                     </div>
                                 )}
-                                
-                                {(show.budget || 0) > 0 && (
-                                    <div>
-                                        <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.budget')}</span>
-                                        <span className="text-gray-900 dark:text-white">${show.budget?.toLocaleString()}</span>
-                                    </div>
-                                )}
-                                {(show.revenue || 0) > 0 && (
-                                    <div>
-                                        <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.revenue')}</span>
-                                        <span className="text-gray-900 dark:text-white">${show.revenue?.toLocaleString()}</span>
-                                    </div>
-                                )}
-                                
-                                {/* Network / Studios */}
                                 {networkData && networkData.length > 0 && (
                                     <div>
                                         <span className="block text-gray-500 dark:text-gray-400 font-medium">{networkLabel}</span>
@@ -770,66 +668,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                         </div>
                                     </div>
                                 )}
-
-                                {productionData && productionData.length > 0 && (
-                                    <div>
-                                        <span className="block text-gray-500 dark:text-gray-400 font-medium">{productionLabel}</span>
-                                        <div className="flex flex-wrap gap-1 mt-1">
-                                            {productionData.map((company: any, idx: number) => {
-                                                const name = typeof company === 'string' ? company : company.name;
-                                                
-                                                return (
-                                                    <span key={idx} className="text-gray-900 dark:text-white me-1">
-                                                        <button onClick={() => onNavigate(`/network/${slugify(name)}`)} className="hover:text-blue-600 dark:hover:text-brand-primary transition-colors">
-                                                            {name}
-                                                        </button>
-                                                        {idx < productionData.length - 1 ? ',' : ''}
-                                                    </span>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {show.creator_persons && show.creator_persons.length > 0 && (
-                                    <div>
-                                        <span className="block text-gray-500 dark:text-gray-400 font-medium">
-                                            {show.media_type === 'movie' ? t('details.director') : t('details.created_by')}
-                                        </span>
-                                        <div className="flex flex-wrap gap-1 mt-1">
-                                            {show.creator_persons.map((creator: any, idx: number) => (
-                                                <button
-                                                    key={creator.id}
-                                                    onClick={() => handleCreatorClick(creator.id, creator.name)}
-                                                    className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-brand-primary transition-colors text-start"
-                                                >
-                                                    {creator.name}{idx < show.creator_persons!.length - 1 ? ',' : ''}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {!!show.year && (
-                                    <div>
-                                        <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.season')}</span>
-                                        <span className="text-gray-900 dark:text-white">{getSeason(`${show.year}-01-01`)}</span> 
-                                    </div>
-                                )}
-                                
-                                {!!show.year && (
-                                    <div>
-                                        <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.start_date')}</span>
-                                        <span className="text-gray-900 dark:text-white">{formatDate(show.year.toString())}</span>
-                                    </div>
-                                )}
-                                {show.last_air_date && (
-                                    <div>
-                                        <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.end_date')}</span>
-                                        <span className="text-gray-900 dark:text-white">{formatDate(show.last_air_date)}</span>
-                                    </div>
-                                )}
-
                                 <div className="flex gap-6">
                                     <div>
                                         <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.average')}</span>
@@ -840,7 +678,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                         <span className="text-gray-900 dark:text-white font-bold">{show.rating || 0}</span>
                                     </div>
                                 </div>
-
                                 <div className="flex gap-6">
                                     <div>
                                         <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.popularity')}</span>
@@ -851,36 +688,11 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                         <span className="text-gray-900 dark:text-white">{realFavoritesCount.toLocaleString()}</span>
                                     </div>
                                 </div>
-
-                                <div>
-                                    <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('common.genres')}</span>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                        {show.genres?.map((g, i) => (
-                                            <button 
-                                                key={i} 
-                                                onClick={() => handleGenreClick(g)}
-                                                className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-brand-primary transition-colors text-start"
-                                            >
-                                                {t(`genres.${g}`, g)}{i < (show.genres?.length || 0) - 1 ? ',' : ''}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {(show.is_anime || show.is_manga) && show.original_name && (
-                                    <div>
-                                        <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.romaji')}</span>
-                                        <span className="text-gray-900 dark:text-white italic">{show.original_name}</span>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Right Column: Cast & Content */}
                     <div className="flex-1 min-w-0 space-y-12">
-                        
-                        {/* Cast Section (Voice Actors for Anime, Cast for others) */}
                         {show.cast && show.cast.length > 0 && (
                             <section>
                                 <div className="flex justify-between items-center mb-4">
@@ -893,7 +705,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                     </button>
                                 </div>
                                 <div className="relative group">
-                                    {/* Scroll Buttons */}
                                     {canScrollCastPrev && (
                                         <button 
                                             onClick={() => scrollCast('prev')} 
@@ -910,53 +721,16 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                             <ChevronRightIcon className="w-6 h-6 rtl:rotate-180" />
                                         </button>
                                     )}
-
-                                    <div 
-                                        ref={castScrollRef}
-                                        className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 snap-x"
-                                    >
+                                    <div ref={castScrollRef} className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 snap-x">
                                         {visibleCast?.map((member) => {
                                             const isCastFavorite = userCharacters[member.id]?.status === 'Favorite';
                                             const personUrl = `/person/${slugify(member.name)}`;
-                                            
                                             return (
-                                            <a 
-                                                key={member.id} 
-                                                href={personUrl}
-                                                className="flex-shrink-0 w-32 snap-start cursor-pointer group/actor relative block"
-                                                onClick={(e) => {
-                                                    // Handle SPA navigation manually to prevent reload, but keep href for SEO
-                                                    if (!e.metaKey && !e.ctrlKey && e.button === 0) {
-                                                        e.preventDefault();
-                                                        onNavigate(personUrl);
-                                                    }
-                                                }}
-                                                title={`${member.name} as ${member.character}`}
-                                            >
+                                            <a key={member.id} href={personUrl} className="flex-shrink-0 w-32 snap-start cursor-pointer group/actor relative block" onClick={(e) => { if (!e.metaKey && !e.ctrlKey && e.button === 0) { e.preventDefault(); onNavigate(personUrl); } }} title={`${member.name} as ${member.character}`}>
                                                 <div className="w-full aspect-[2/3] rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 mb-2 relative">
-                                                    {member.profile_path ? (
-                                                        <img 
-                                                            src={member.profile_path} 
-                                                            alt={`Portrait of ${member.name}`} 
-                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                                                            loading="lazy"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center">
-                                                            <UserPlaceholderIcon className="w-10 h-10 text-gray-400" />
-                                                        </div>
-                                                    )}
-                                                    {/* Heart Icon Overlay */}
+                                                    {member.profile_path ? <img src={member.profile_path} alt={member.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center"><UserPlaceholderIcon className="w-10 h-10 text-gray-400" /></div>}
                                                     {handleUpdateListStatus && (
-                                                        <button 
-                                                            onClick={(e) => handleToggleCastFavorite(e, member)}
-                                                            className={`absolute top-1 right-1 p-1.5 rounded-full backdrop-blur-sm transition-all duration-200 shadow-sm
-                                                                ${isCastFavorite 
-                                                                    ? 'bg-white/80 text-red-500 opacity-100' 
-                                                                    : 'bg-black/30 text-white opacity-0 group-hover:opacity-100 hover:bg-white/80 hover:text-red-500'
-                                                                }`}
-                                                            title={isCastFavorite ? "Remove from favorites" : "Add to favorites"}
-                                                        >
+                                                        <button onClick={(e) => handleToggleCastFavorite(e, member)} className={`absolute top-1 right-1 p-1.5 rounded-full backdrop-blur-sm transition-all duration-200 shadow-sm ${isCastFavorite ? 'bg-white/80 text-red-500 opacity-100' : 'bg-black/30 text-white opacity-0 group-hover:opacity-100 hover:bg-white/80 hover:text-red-500'}`} title={isCastFavorite ? "Remove from favorites" : "Add to favorites"}>
                                                             <HeartIcon solid={isCastFavorite} className="w-4 h-4" />
                                                         </button>
                                                     )}
@@ -966,10 +740,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                             </a>
                                         )})}
                                         <div className="flex-shrink-0 w-32 snap-start">
-                                            <button 
-                                                onClick={handleViewFullCast}
-                                                className="flex flex-col items-center justify-center w-full aspect-[2/3] rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-600 dark:hover:border-brand-primary dark:hover:text-brand-primary transition-colors"
-                                            >
+                                            <button onClick={handleViewFullCast} className="flex flex-col items-center justify-center w-full aspect-[2/3] rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-600 dark:hover:border-brand-primary dark:hover:text-brand-primary transition-colors">
                                                 <span className="font-bold text-sm">{t('common.view_all')}</span>
                                                 <ArrowRightIcon className="w-4 h-4 mt-1 rtl:rotate-180" />
                                             </button>
@@ -979,252 +750,60 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                             </section>
                         )}
 
-                        {/* SEO Content Section */}
                         {generateSeoParagraph()}
 
-                        {/* Episodes Section (For TV Shows - Main View) */}
                         {show.media_type === 'tv' && !show.is_manga && !isSeasonPage && (
                             <div className="mb-12 animate-fade-in">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('details.episodes')}</h2>
-                                    
-                                    {/* Season Selector */}
                                     {show.seasons && show.seasons.length > 0 && (
                                         <div className="relative">
-                                            <select 
-                                                value={selectedSeason || ''}
-                                                onChange={(e) => setSelectedSeason(parseInt(e.target.value))}
-                                                className="appearance-none bg-gray-100 dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white py-2 ps-4 pe-10 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer"
-                                            >
+                                            <select value={selectedSeason || ''} onChange={(e) => setSelectedSeason(parseInt(e.target.value))} className="appearance-none bg-gray-100 dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white py-2 ps-4 pe-10 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer">
                                                 {show.seasons.map(season => (
-                                                    <option key={season.id} value={season.season_number}>
-                                                        Season {season.season_number}
-                                                    </option>
+                                                    <option key={season.id} value={season.season_number}>Season {season.season_number}</option>
                                                 ))}
                                             </select>
                                             <CaretDownIcon className="absolute end-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-500" />
                                         </div>
                                     )}
                                 </div>
-
-                                {loadingEpisodes ? (
-                                    <div className="py-12 flex justify-center">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
-                                    </div>
-                                ) : (
+                                {loadingEpisodes ? <div className="py-12 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div></div> : (
                                     <div className="space-y-4">
                                         {seasonEpisodes.length > 0 ? (
                                             seasonEpisodes.map(episode => (
-                                                <div 
-                                                    key={episode.id} 
-                                                    className="group flex flex-col md:flex-row gap-4 items-start p-4 rounded-xl bg-gray-50 dark:bg-[#181818] border border-gray-200 dark:border-gray-800 transition-colors hover:border-brand-primary/50 dark:hover:border-brand-primary/30 cursor-pointer"
-                                                    onClick={() => handleEpisodeClick(episode)}
-                                                >
+                                                <div key={episode.id} className="group flex flex-col md:flex-row gap-4 items-start p-4 rounded-xl bg-gray-50 dark:bg-[#181818] border border-gray-200 dark:border-gray-800 transition-colors hover:border-brand-primary/50 dark:hover:border-brand-primary/30 cursor-pointer" onClick={() => handleEpisodeClick(episode)}>
                                                     <div className="flex-shrink-0 w-full md:w-48 aspect-video rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 relative">
-                                                        {episode.still_path ? (
-                                                            <img 
-                                                                src={episode.still_path.startsWith('http') ? episode.still_path : `https://image.tmdb.org/t/p/w500${episode.still_path}`} 
-                                                                alt={episode.name} 
-                                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                                                loading="lazy"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                                <span className="text-xs">No Image</span>
-                                                            </div>
-                                                        )}
-                                                        {/* Countdown / Released Badge */}
-                                                        <div className="absolute top-1 right-1">
-                                                            <div className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                                                                 <EpisodeCountdown airDate={episode.air_date} />
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <div className="absolute bottom-1 right-1 bg-black/60 px-1.5 py-0.5 rounded text-[10px] text-white font-medium">
-                                                            {episode.runtime ? `${episode.runtime}m` : 'N/A'}
-                                                        </div>
+                                                        {episode.still_path ? <img src={episode.still_path.startsWith('http') ? episode.still_path : `https://image.tmdb.org/t/p/w500${episode.still_path}`} alt={episode.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><span className="text-xs">No Image</span></div>}
+                                                        <div className="absolute top-1 right-1"><div className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-1.5 py-0.5 rounded"><EpisodeCountdown airDate={episode.air_date} /></div></div>
+                                                        <div className="absolute bottom-1 right-1 bg-black/60 px-1.5 py-0.5 rounded text-[10px] text-white font-medium">{episode.runtime ? `${episode.runtime}m` : 'N/A'}</div>
                                                     </div>
-                                                    
                                                     <div className="flex-1 min-w-0 w-full">
                                                         <div className="flex justify-between items-start gap-2 mb-1">
-                                                            <div>
-                                                                <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-brand-primary transition-colors">
-                                                                    <span className="text-gray-500 dark:text-gray-500 me-2 font-mono text-sm">E{episode.episode_number}</span>
-                                                                    {episode.name}
-                                                                </h3>
-                                                                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                                    <span>{episode.air_date ? new Date(episode.air_date).toLocaleDateString() : 'TBA'}</span>
-                                                                    {episode.vote_average > 0 && (
-                                                                        <div className="flex items-center gap-1 text-yellow-500">
-                                                                            <StarIcon className="w-3 h-3" />
-                                                                            <span>{episode.vote_average.toFixed(1)}</span>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            {/* Quick Add Button */}
-                                                            <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                                                <ListStatusButton 
-                                                                    showId={episode.id} 
-                                                                    userList={userList} 
-                                                                    handleUpdateListStatus={handleUpdateListStatus} 
-                                                                    isIconOnly 
-                                                                    // Pass a pseudo-show object for the episode
-                                                                    show={{
-                                                                        ...show,
-                                                                        id: episode.id,
-                                                                        title: episode.name,
-                                                                        media_type: 'tv', // Tracking as TV type in generic list
-                                                                        image_url: episode.still_path ? `https://image.tmdb.org/t/p/w500${episode.still_path}` : '',
-                                                                        year: episode.air_date ? new Date(episode.air_date).getFullYear() : 0
-                                                                    }}
-                                                                    transparent
-                                                                    align="right" 
-                                                                />
-                                                            </div>
+                                                            <div><h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-brand-primary transition-colors"><span className="text-gray-500 dark:text-gray-500 me-2 font-mono text-sm">E{episode.episode_number}</span>{episode.name}</h3><div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1"><span>{episode.air_date ? new Date(episode.air_date).toLocaleDateString() : 'TBA'}</span>{episode.vote_average > 0 && <div className="flex items-center gap-1 text-yellow-500"><StarIcon className="w-3 h-3" /><span>{episode.vote_average.toFixed(1)}</span></div>}</div></div>
+                                                            <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}><ListStatusButton showId={episode.id} userList={userList} handleUpdateListStatus={handleUpdateListStatus} isIconOnly show={{ ...show, id: episode.id, title: episode.name, media_type: 'tv', image_url: episode.still_path ? `https://image.tmdb.org/t/p/w500${episode.still_path}` : '', year: episode.air_date ? new Date(episode.air_date).getFullYear() : 0 }} transparent align="right" /></div>
                                                         </div>
-                                                        <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
-                                                            {episode.overview || "No overview available for this episode."}
-                                                        </p>
+                                                        <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">{episode.overview || "No overview available for this episode."}</p>
                                                     </div>
                                                 </div>
                                             ))
-                                        ) : (
-                                            <div className="text-center py-12 bg-gray-50 dark:bg-[#1e1e1e] rounded-lg border border-dashed border-gray-200 dark:border-gray-800">
-                                                <p className="text-gray-500 dark:text-gray-400">No episodes found for this season.</p>
-                                            </div>
-                                        )}
+                                        ) : <div className="text-center py-12 bg-gray-50 dark:bg-[#1e1e1e] rounded-lg border border-dashed border-gray-200 dark:border-gray-800"><p className="text-gray-500 dark:text-gray-400">No episodes found for this season.</p></div>}
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Relations / Related Media Section */}
-                        {show.relations && show.relations.length > 0 && (
-                            <ContentCarousel 
-                                title={show.is_anime ? `${t('hero.seasons')} & ${t('details.related_media')}` : t('details.related_media')}
-                                shows={show.relations} 
-                                onShowClick={(s) => {
-                                    const slug = slugify(s.title);
-                                    let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/';
-                                    if (s.is_anime) prefix = '/anime/';
-                                    onNavigate(`${prefix}${slug}`);
-                                }} 
-                                userList={userList} 
-                                userFavorites={userFavorites} 
-                                handleUpdateListStatus={handleUpdateListStatus}
-                                handleToggleFavorite={handleToggleFavorite}
-                            />
-                        )}
-
-                        {/* Seasons Section (TV Only - keep as fallback or supplementary navigation if not viewing episodes directly) */}
-                        {!isSeasonPage && !show.is_manga && seasonShows.length > 0 && (
-                             <div className="mt-8">
-                                <ContentCarousel 
-                                    title={t('hero.seasons')} 
-                                    shows={seasonShows} 
-                                    onShowClick={(s) => onNavigate(`/tv/${slugify(show.title)}/season/${s.season_number}`)} 
-                                    userList={userList} 
-                                    userFavorites={userFavorites} 
-                                    handleUpdateListStatus={handleUpdateListStatus}
-                                    handleToggleFavorite={handleToggleFavorite}
-                                />
-                            </div>
-                        )}
-
-                        {/* Episodes Section (Season Page Only - Legacy view if navigated via carousel) */}
-                        {isSeasonPage && show.episodes && show.episodes.length > 0 && (
-                            <div className="mb-12">
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">{t('details.episodes')}</h2>
-                                <div className="space-y-4">
-                                    {show.episodes.map(episode => (
-                                        <div 
-                                            key={episode.id} 
-                                            className="flex flex-col md:flex-row gap-4 items-start p-4 rounded-xl bg-gray-50 dark:bg-[#181818] border border-gray-200 dark:border-gray-800 transition-colors hover:border-brand-primary/50 dark:hover:border-brand-primary/30 cursor-pointer"
-                                            onClick={() => handleEpisodeClick(episode)}
-                                        >
-                                            <div className="flex-shrink-0 w-full md:w-48 aspect-video rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 relative group">
-                                                 {episode.still_path ? (
-                                                    <img 
-                                                        src={episode.still_path.startsWith('http') ? episode.still_path : `https://image.tmdb.org/t/p/w500${episode.still_path}`} 
-                                                        alt={episode.name} 
-                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                                        loading="lazy"
-                                                    />
-                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                        <span className="text-xs">No Image</span>
-                                                    </div>
-                                                 )}
-                                                 <div className="absolute top-1 right-1">
-                                                    <div className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                                                         <EpisodeCountdown airDate={episode.air_date} />
-                                                    </div>
-                                                </div>
-                                                 <div className="absolute bottom-1 right-1 bg-black/60 px-1.5 py-0.5 rounded text-[10px] text-white font-medium">
-                                                    {episode.runtime ? `${episode.runtime}m` : 'N/A'}
-                                                 </div>
-                                            </div>
-                                            
-                                            <div className="flex-1 min-w-0 w-full">
-                                                <div className="flex justify-between items-start gap-2 mb-2">
-                                                    <div>
-                                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1">
-                                                            <span className="text-brand-primary mr-2">#{episode.episode_number}</span>
-                                                            {episode.name}
-                                                        </h3>
-                                                        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                            <span>{episode.air_date ? new Date(episode.air_date).toLocaleDateString() : 'TBA'}</span>
-                                                            {episode.vote_average > 0 && (
-                                                                <div className="flex items-center gap-1 text-yellow-500">
-                                                                    <StarIcon className="w-3 h-3" />
-                                                                    <span>{episode.vote_average.toFixed(1)}</span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 leading-relaxed">
-                                                    {episode.overview || "No overview available for this episode."}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {show.promo_video_url && (
-                            <PromoVideo videoUrl={show.promo_video_url} title={show.title} />
-                        )}
-
-                        {show.gallery_urls && show.gallery_urls.length > 0 && (
-                            <ImageSlider images={show.gallery_urls} title={show.title} />
-                        )}
+                        {show.relations && show.relations.length > 0 && <ContentCarousel title={show.is_anime ? `${t('hero.seasons')} & ${t('details.related_media')}` : t('details.related_media')} shows={show.relations} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; if (s.is_anime) prefix = '/anime/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} />}
+                        {!isSeasonPage && !show.is_manga && seasonShows.length > 0 && <div className="mt-8"><ContentCarousel title={t('hero.seasons')} shows={seasonShows} onShowClick={(s) => onNavigate(`/tv/${slugify(show.title)}/season/${s.season_number}`)} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} /></div>}
+                        {show.promo_video_url && <PromoVideo videoUrl={show.promo_video_url} title={show.title} />}
+                        {show.gallery_urls && show.gallery_urls.length > 0 && <ImageSlider images={show.gallery_urls} title={show.title} />}
                     </div>
                 </div>
 
-                {/* 3. More Like This */}
-                {moreLikeThis.length > 0 && (
-                    <div className="mt-16">
-                        <ContentCarousel 
-                            title={t('details.more_like_this')}
-                            shows={moreLikeThis} 
-                            onShowClick={(s) => {
-                                const slug = slugify(s.title);
-                                let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/';
-                                if (s.is_anime) prefix = '/anime/';
-                                onNavigate(`${prefix}${slug}`);
-                            }} 
-                            userList={userList} 
-                            userFavorites={userFavorites} 
-                            handleUpdateListStatus={handleUpdateListStatus}
-                            handleToggleFavorite={handleToggleFavorite}
-                        />
-                    </div>
-                )}
+                {moreLikeThis.length > 0 && <div className="mt-16"><ContentCarousel title={t('details.more_like_this')} shows={moreLikeThis} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; if (s.is_anime) prefix = '/anime/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} /></div>}
 
-                {/* 4. Comments Section */}
+                {/* Ad Placement 1: Above Comments */}
+                <AdSense slot="5904887585" className="border-y border-gray-100 dark:border-gray-800 py-4" />
+
                 <div className="mt-16 w-full">
                     <CommentsSection showId={show.id} onViewUser={handleViewUser} currentUser={currentUser} />
                 </div>
