@@ -1,6 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
-import { GENRES, discoverMedia, slugify, getPopularPeople } from '../lib/tmdb';
+import JSZip from 'jszip';
+import { GENRES, discoverMedia, slugify, getPopularPeople, searchSpecific } from '../lib/tmdb';
 import { Show } from '../types';
 import { useSEO } from '../hooks/useSEO';
 import { UploadCloudIcon, CalendarIcon } from '../constants';
@@ -9,7 +9,6 @@ interface SitemapPageProps {
     onNavigate: (path: string) => void;
 }
 
-// Icons for the dashboard
 const MovieIcon = () => (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
@@ -27,36 +26,19 @@ const PersonIcon = () => (
 );
 
 const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
-    useSEO('Sitemap Generator', 'Generate XML sitemaps and view database statistics.');
+    useSEO('Sitemap Center', 'Generate categorized and chunked sitemaps for optimal indexing.');
 
-    // Stats State
-    const [stats, setStats] = useState({
-        movies: 0,
-        tv: 0,
-        people: 0
-    });
+    const [stats, setStats] = useState({ movies: 0, tv: 0, people: 0 });
     const [statsLoading, setStatsLoading] = useState(true);
-
-    // Massive Generator State
     const [isGenerating, setIsGenerating] = useState(false);
     const [progress, setProgress] = useState(0);
     const [statusMessage, setStatusMessage] = useState('Ready to generate');
-    const [generatedCount, setGeneratedCount] = useState(0);
-    const [categoryCounts, setCategoryCounts] = useState({ movies: 0, tv: 0 });
-
-    // Year Generator State
-    const [yearStart, setYearStart] = useState(2026); // Default to future
-    const [yearEnd, setYearEnd] = useState(2000);     // Default range 2026 -> 2000
-    const [isGeneratingYearly, setIsGeneratingYearly] = useState(false);
-    const [yearlyProgress, setYearlyProgress] = useState(0);
-    const [yearlyStatus, setYearlyStatus] = useState('Ready to generate');
-    const [yearlyCount, setYearlyCount] = useState(0);
+    const [counts, setCounts] = useState({ movies: 0, tv: 0, people: 0, networks: 0 });
 
     useEffect(() => {
         const fetchStats = async () => {
             setStatsLoading(true);
             try {
-                // Fetch totals from APIs (Page 1 request includes total_results)
                 const [movies, tv] = await Promise.all([
                     discoverMedia('movie', {}, 1),
                     discoverMedia('tv', {}, 1)
@@ -64,10 +46,10 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
                 setStats({
                     movies: movies.total_results,
                     tv: tv.total_results,
-                    people: 0 // Placeholder
+                    people: 1000000 // TMDB has a lot
                 });
             } catch (e) {
-                console.error("Failed to load stats", e);
+                console.error(e);
             } finally {
                 setStatsLoading(false);
             }
@@ -75,38 +57,6 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
         fetchStats();
     }, []);
 
-    const staticRoutes = [
-        { name: 'Home', path: '/' },
-        { name: 'Search', path: '/search' },
-        { name: 'My List', path: '/my-list' },
-        { name: 'Login', path: '/login' },
-        { name: 'Register', path: '/signup' },
-        { name: 'Settings', path: '/settings' },
-        { name: 'About', path: '/about' },
-        { name: 'Features', path: '/features' },
-        { name: 'Contact', path: '/contact' },
-        { name: 'Support', path: '/support' },
-        { name: 'Help', path: '/help' },
-        { name: 'Terms', path: '/terms' },
-        { name: 'Privacy', path: '/privacy' },
-        { name: 'Mobile App', path: '/mobile-app' },
-    ];
-
-    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-
-    const downloadXml = (xml: string, filename: string) => {
-        const blob = new Blob([xml], { type: 'text/xml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-
-    // Helper for XML escaping
     const escapeXml = (unsafe: string) => {
         if (!unsafe) return '';
         return unsafe.replace(/[<>&'"]/g, (c) => {
@@ -119,296 +69,152 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
                 default: return c;
             }
         });
-    }
-
-    const generateMassiveSitemap = async () => {
-        setIsGenerating(true);
-        setProgress(0);
-        setGeneratedCount(0);
-        setCategoryCounts({ movies: 0, tv: 0 });
-        
-        const allShows = new Map<string, Show>();
-        
-        try {
-            // Target: ~10,000 items total
-            // 2500 per category => 125 pages * 20 items (Adjusted for just Movie/TV)
-            // Let's do 250 pages each to get ~10k
-            const TARGET_PAGES = 250; 
-
-            // 1. Fetch Movies
-            for (let i = 1; i <= TARGET_PAGES; i++) {
-                setStatusMessage(`Fetching Movies (Page ${i}/${TARGET_PAGES})...`);
-                const data = await discoverMedia('movie', {}, i);
-                data.results.forEach(s => {
-                    if (s.id && s.title) allShows.set(`movie-${s.id}`, s);
-                });
-                
-                const currentCount = allShows.size;
-                setGeneratedCount(currentCount);
-                setCategoryCounts(prev => ({ ...prev, movies: data.results.length + prev.movies }));
-                setProgress(Math.round((i / (TARGET_PAGES * 2)) * 100));
-                
-                await delay(200); // Rate limit protection
-            }
-
-            // 2. Fetch TV Shows
-            for (let i = 1; i <= TARGET_PAGES; i++) {
-                setStatusMessage(`Fetching TV Shows (Page ${i}/${TARGET_PAGES})...`);
-                const data = await discoverMedia('tv', {}, i);
-                data.results.forEach(s => {
-                    if (s.id && s.title) allShows.set(`tv-${s.id}`, s);
-                });
-
-                setGeneratedCount(allShows.size);
-                setCategoryCounts(prev => ({ ...prev, tv: prev.tv + data.results.length }));
-                setProgress(50 + Math.round((i / (TARGET_PAGES * 2)) * 100));
-                await delay(200);
-            }
-
-            setStatusMessage("Compiling XML file with Image Extensions...");
-            
-            const baseUrl = 'https://www.watchlistey.com';
-            const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-            
-            // Add Image Namespace
-            let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">`;
-
-            // Static Routes
-            staticRoutes.forEach(route => {
-                xml += `
-  <url>
-    <loc>${baseUrl}${route.path}</loc>
-    <lastmod>${date}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>`;
-            });
-
-            // Genres
-            Object.values(GENRES).forEach(genre => {
-                xml += `
-  <url>
-    <loc>${baseUrl}/genre/${slugify(genre)}</loc>
-    <lastmod>${date}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`;
-            });
-
-            // Dynamic Items
-            let validItemsCount = 0;
-            allShows.forEach(show => {
-                const slug = slugify(show.title);
-                if (!slug) return; // Skip invalid slugs
-
-                let prefix = '/movie/';
-                if (show.media_type === 'tv') prefix = '/tv/';
-                
-                const path = `${prefix}${slug}`;
-                validItemsCount++;
-                
-                // Add Image Sitemap Extension tags
-                let imageTag = '';
-                if (show.image_url && !show.image_url.includes('placeholder')) {
-                    imageTag = `
-    <image:image>
-      <image:loc>${escapeXml(show.image_url)}</image:loc>
-      <image:title>${escapeXml(show.title)}</image:title>
-    </image:image>`;
-                }
-
-                xml += `
-  <url>
-    <loc>${baseUrl}${path}</loc>
-    <lastmod>${date}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>${imageTag}
-  </url>`;
-            });
-
-            xml += `\n</urlset>`;
-
-            downloadXml(xml, 'sitemap.xml');
-
-            setStatusMessage(`Success! Generated sitemap with ${validItemsCount + staticRoutes.length + Object.values(GENRES).length} URLs and Image Tags.`);
-            
-        } catch (error) {
-            console.error(error);
-            setStatusMessage("Error generating sitemap. Please check console and try again.");
-        } finally {
-            setIsGenerating(false);
-        }
     };
 
-    const generateYearlySitemap = async () => {
-        setIsGeneratingYearly(true);
-        setYearlyProgress(0);
-        setYearlyCount(0);
-        setYearlyStatus('Checking existing sitemap...');
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+    const generateSitemapXml = (items: Show[], baseUrl: string) => {
+        const date = new Date().toISOString().split('T')[0];
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">`;
         
-        try {
-            // 1. Fetch existing sitemap.xml to avoid duplicates
-            const existingUrls = new Set<string>();
-            try {
-                const res = await fetch('/sitemap.xml');
-                if (res.ok) {
-                    const text = await res.text();
-                    const regex = /<loc>(.*?)<\/loc>/g;
-                    let match;
-                    while ((match = regex.exec(text)) !== null) {
-                        existingUrls.add(match[1].trim());
-                    }
-                }
-            } catch (e) {
-                console.warn("Could not fetch existing sitemap.xml", e);
+        items.forEach(item => {
+            const slug = slugify(item.title);
+            if (!slug) return;
+            
+            let path = '/';
+            if (item.media_type === 'movie') path = `/movie/${slug}`;
+            else if (item.media_type === 'tv') path = `/tv/${slug}`;
+            else if (item.media_type === 'person') path = `/person/${slug}`;
+            /* FIX: Removed the direct comparison item.media_type === 'company' because 'company' is not in the media_type union type, 
+               which caused a TypeScript error. We now solely rely on (item as any).media_type. */
+            else if ((item as any).media_type === 'company') path = `/network/${slug}`;
+
+            let imageTag = '';
+            if (item.image_url && !item.image_url.includes('placeholder')) {
+                imageTag = `\n    <image:image>\n      <image:loc>${escapeXml(item.image_url)}</image:loc>\n      <image:title>${escapeXml(item.title)}</image:title>\n    </image:image>`;
             }
 
-            const baseUrl = 'https://www.watchlistey.com';
-            const date = new Date().toISOString().split('T')[0];
-            const newUrls = new Map<string, Show>(); // Store full show for image data
-            
-            const start = yearStart;
-            const end = yearEnd;
-            const isDescending = start > end;
-            const totalYears = Math.abs(end - start) + 1;
+            xml += `\n  <url>\n    <loc>${baseUrl}${path}</loc>\n    <lastmod>${date}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>${imageTag}\n  </url>`;
+        });
 
-            // Limits Per Year
-            const MOVIES_PAGES = 50;   // 1000 items/year
-            const TV_PAGES = 50;       // 1000 items/year
-            
-            // One-time People Fetch
-            const PEOPLE_PAGES = 100;  // 2000 people
+        xml += `\n</urlset>`;
+        return xml;
+    };
 
-            // Helper to fetch in batches to respect rate limits better
-            const fetchInBatches = async (fetchFn: (p: number) => Promise<any>, totalPages: number, statusPrefix: string) => {
-                const results = [];
-                const BATCH_SIZE = 5; // Parallel requests
-                for (let p = 1; p <= totalPages; p += BATCH_SIZE) {
-                    const endP = Math.min(p + BATCH_SIZE - 1, totalPages);
-                    setYearlyStatus(`${statusPrefix} (Page ${p}-${endP})...`);
-                    
-                    const batchPromises = [];
-                    for (let i = 0; i < BATCH_SIZE && p + i <= totalPages; i++) {
-                        batchPromises.push(fetchFn(p + i));
-                    }
-                    
-                    const batchResults = await Promise.all(batchPromises);
-                    results.push(...batchResults);
-                    
-                    // Update progress slightly within year
-                    // Rate limit protection
-                    await delay(300); 
+    const fetchAllData = async () => {
+        setIsGenerating(true);
+        setProgress(0);
+        setCounts({ movies: 0, tv: 0, people: 0, networks: 0 });
+        
+        const zip = new JSZip();
+        const baseUrl = 'https://www.watchlistey.com';
+        const CHUNK_SIZE = 5000;
+        const ITEMS_PER_PAGE = 20;
+
+        try {
+            // 1. Movies (25,000 items -> 5 files)
+            const movieItems: Show[] = [];
+            const MOVIE_TOTAL = 25000;
+            const MOVIE_PAGES = MOVIE_TOTAL / ITEMS_PER_PAGE;
+            
+            for (let i = 1; i <= MOVIE_PAGES; i++) {
+                setStatusMessage(`Fetching Movies (Page ${i}/${MOVIE_PAGES})...`);
+                const data = await discoverMedia('movie', {}, i);
+                if (!data.results.length) break;
+                movieItems.push(...data.results);
+                setCounts(prev => ({ ...prev, movies: movieItems.length }));
+                setProgress(Math.round((i / (MOVIE_PAGES * 3)) * 100));
+                if (i % 10 === 0) await delay(150); // Be kind to API
+            }
+
+            // 2. TV Shows (15,000 items -> 3 files)
+            const tvItems: Show[] = [];
+            const TV_TOTAL = 15000;
+            const TV_PAGES = TV_TOTAL / ITEMS_PER_PAGE;
+            
+            for (let i = 1; i <= TV_PAGES; i++) {
+                setStatusMessage(`Fetching TV Shows (Page ${i}/${TV_PAGES})...`);
+                const data = await discoverMedia('tv', {}, i);
+                if (!data.results.length) break;
+                tvItems.push(...data.results);
+                setCounts(prev => ({ ...prev, tv: tvItems.length }));
+                setProgress(33 + Math.round((i / (TV_PAGES * 3)) * 100));
+                if (i % 10 === 0) await delay(150);
+            }
+
+            // 3. People (5,000 items -> 1 file)
+            const personItems: Show[] = [];
+            const PERSON_PAGES = CHUNK_SIZE / ITEMS_PER_PAGE;
+            for (let i = 1; i <= PERSON_PAGES; i++) {
+                setStatusMessage(`Fetching Popular People (Page ${i}/${PERSON_PAGES})...`);
+                const data = await getPopularPeople(i);
+                if (!data.length) break;
+                personItems.push(...data);
+                setCounts(prev => ({ ...prev, people: personItems.length }));
+                setProgress(66 + Math.round((i / (PERSON_PAGES * 3)) * 100));
+                if (i % 10 === 0) await delay(150);
+            }
+
+            // 4. Networks (5,000 items -> 1 file)
+            const networkItems: Show[] = [];
+            const NETWORK_PAGES = CHUNK_SIZE / ITEMS_PER_PAGE;
+            for (let i = 1; i <= NETWORK_PAGES; i++) {
+                setStatusMessage(`Fetching Networks (Page ${i}/${NETWORK_PAGES})...`);
+                // Use specific search for companies/networks with broad queries to harvest
+                const data = await searchSpecific('a', 'company', i);
+                if (!data.results.length) break;
+                const mapped = data.results.map(n => ({
+                    id: n.id,
+                    title: n.name,
+                    media_type: 'company' as any,
+                    image_url: n.logo_path ? `https://image.tmdb.org/t/p/w200${n.logo_path}` : '',
+                    year: 0,
+                    description: '',
+                    rating: 0,
+                    backdrop_url: '',
+                    genres: []
+                }));
+                networkItems.push(...mapped);
+                setCounts(prev => ({ ...prev, networks: networkItems.length }));
+                if (i % 10 === 0) await delay(150);
+            }
+
+            setStatusMessage("Finalizing chunks and generating ZIP...");
+
+            // Helper to chunk and add to zip
+            const chunkAndAdd = (arr: Show[], namePrefix: string) => {
+                for (let i = 0; i < arr.length; i += CHUNK_SIZE) {
+                    const chunk = arr.slice(i, i + CHUNK_SIZE);
+                    const fileIndex = (i / CHUNK_SIZE) + 1;
+                    const xml = generateSitemapXml(chunk, baseUrl);
+                    zip.file(`${namePrefix}-${fileIndex}.xml`, xml);
                 }
-                return results;
             };
 
-            // 2. Fetch Popular People (Independent of Year, done once)
-            const peopleData = await fetchInBatches(
-                (p) => getPopularPeople(p),
-                PEOPLE_PAGES,
-                `Fetching Profiles`
-            );
-            
-            peopleData.forEach(res => {
-                 const items = Array.isArray(res) ? res : (res.results || []);
-                 items.forEach((person: Show) => {
-                     const slug = slugify(person.title);
-                     if (!slug) return;
-                     const fullUrl = `${baseUrl}/person/${slug}`;
-                     if (!existingUrls.has(fullUrl)) {
-                         newUrls.set(fullUrl, person);
-                     }
-                 });
-            });
-            setYearlyCount(newUrls.size);
+            chunkAndAdd(movieItems, 'movies');
+            chunkAndAdd(tvItems, 'tv-show');
+            chunkAndAdd(personItems, 'person');
+            chunkAndAdd(networkItems, 'network');
 
+            // Generate ZIP
+            const content = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(content);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sitemaps.zip';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
 
-            // 3. Iterate Years
-            for (let i = 0; i < totalYears; i++) {
-                const y = isDescending ? start - i : start + i;
-                const yearStr = y.toString();
-                
-                // 2a. Movies
-                const movies = await fetchInBatches(
-                    (p) => discoverMedia('movie', { year: yearStr }, p), 
-                    MOVIES_PAGES, 
-                    `Year ${y}: Movies`
-                );
+            setStatusMessage("Sitemaps bundled and downloaded successfully!");
+            setProgress(100);
 
-                // 2b. TV
-                const tv = await fetchInBatches(
-                    (p) => discoverMedia('tv', { year: yearStr }, p), 
-                    TV_PAGES, 
-                    `Year ${y}: TV Shows`
-                );
-
-                // Process all results
-                const processItems = (responseArray: any[]) => {
-                     responseArray.forEach(res => {
-                        const items = Array.isArray(res) ? res : (res.results || []);
-                        items.forEach((show: Show) => {
-                            const slug = slugify(show.title);
-                            if (!slug) return;
-
-                            let prefix = '/movie/';
-                            if (show.media_type === 'tv') prefix = '/tv/';
-
-                            const fullUrl = `${baseUrl}${prefix}${slug}`;
-                            
-                            // Check duplication
-                            if (!existingUrls.has(fullUrl)) {
-                                newUrls.set(fullUrl, show);
-                            }
-                        });
-                    });
-                };
-
-                processItems(movies);
-                processItems(tv);
-
-                setYearlyCount(newUrls.size);
-                setYearlyProgress(Math.round(((i + 1) / totalYears) * 100));
-            }
-
-            if (newUrls.size === 0) {
-                setYearlyStatus("No new unique URLs found.");
-                setIsGeneratingYearly(false);
-                return;
-            }
-
-            setYearlyStatus("Compiling new sitemap with Image Tags...");
-
-            // 4. Generate XML
-            let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">`;
-            
-            newUrls.forEach((show, url) => {
-                let imageTag = '';
-                if (show.image_url && !show.image_url.includes('placeholder')) {
-                    imageTag = `
-    <image:image>
-      <image:loc>${escapeXml(show.image_url)}</image:loc>
-      <image:title>${escapeXml(show.title)}</image:title>
-    </image:image>`;
-                }
-
-                 xml += `
-  <url>
-    <loc>${url}</loc>
-    <lastmod>${date}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>${imageTag}
-  </url>`;
-            });
-            xml += `\n</urlset>`;
-
-            downloadXml(xml, `sitemap-${yearStart}-${yearEnd}.xml`);
-            setYearlyStatus(`Done! Generated ${newUrls.size} new URLs with images.`);
-
-        } catch (e) {
-            console.error(e);
-            setYearlyStatus("Error generating yearly sitemap.");
+        } catch (error) {
+            console.error(error);
+            setStatusMessage("Generation failed. Check console for details.");
         } finally {
-            setIsGeneratingYearly(false);
+            setIsGenerating(false);
         }
     };
 
@@ -416,196 +222,73 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
         <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] pb-12 pt-32 transition-colors duration-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 
-                {/* 1. Database Stats Dashboard */}
                 <div className="mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Database Statistics</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Database Health</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <StatCard 
-                            label="Movies Indexed" 
-                            count={stats.movies} 
-                            loading={statsLoading}
-                            icon={<MovieIcon />} 
-                            color="bg-blue-500"
-                        />
-                        <StatCard 
-                            label="TV Shows Indexed" 
-                            count={stats.tv} 
-                            loading={statsLoading}
-                            icon={<TvIcon />} 
-                            color="bg-purple-500"
-                        />
-                         <StatCard 
-                            label="Profiles" 
-                            count={stats.people > 0 ? stats.people : '10k+'} 
-                            loading={statsLoading}
-                            icon={<PersonIcon />} 
-                            color="bg-yellow-500"
-                        />
+                        <StatCard label="Movies" count={stats.movies} loading={statsLoading} icon={<MovieIcon />} color="bg-blue-500" />
+                        <StatCard label="TV Shows" count={stats.tv} loading={statsLoading} icon={<TvIcon />} color="bg-purple-500" />
+                        <StatCard label="People" count={stats.people} loading={statsLoading} icon={<PersonIcon />} color="bg-yellow-500" />
                     </div>
                 </div>
 
-                {/* 2. Massive Generator Section */}
                 <div className="bg-white dark:bg-[#1e1e1e] rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-8 mb-8">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Sitemap Generator</h1>
+                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Mass Sitemap Generator</h1>
                             <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
-                                Generate a massive <code className="bg-gray-100 dark:bg-[#2a2a2a] px-1.5 py-0.5 rounded text-sm">sitemap.xml</code> containing ~10,000 of the most popular items to boost your SEO. 
-                                Upload the downloaded file to your website's <span className="font-mono text-xs bg-gray-100 dark:bg-[#2a2a2a] px-1 py-0.5 rounded">public/</span> folder.
+                                Automatically creates chunked sitemaps (5,000 URLs per file) as requested.
+                                Files included: <strong>movies (1-5), tv-show (1-3), network, and person</strong>.
                             </p>
                         </div>
-                        <div className="flex flex-col gap-2 w-full md:w-auto">
-                            <button 
-                                onClick={generateMassiveSitemap}
-                                disabled={isGenerating || isGeneratingYearly}
-                                className={`flex items-center justify-center gap-2 px-6 py-3 text-white rounded-lg font-bold shadow-md transition-all ${isGenerating ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-105 active:scale-95'}`}
-                            >
-                                {isGenerating ? (
-                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                ) : (
-                                    <UploadCloudIcon className="w-6 h-6" />
-                                )}
-                                <span>{isGenerating ? 'Generating...' : 'Generate 10k Sitemap'}</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Progress Indicator */}
-                    {(isGenerating || generatedCount > 0) && !isGeneratingYearly && (
-                        <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-lg border border-blue-100 dark:border-blue-900/30 mb-8">
-                            <div className="flex justify-between items-center mb-3">
-                                <span className="font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-2">
-                                    {isGenerating ? <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div> : <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
-                                    {statusMessage}
-                                </span>
-                                <span className="text-lg font-bold text-blue-700 dark:text-blue-300">{generatedCount.toLocaleString()} items</span>
-                            </div>
-                            
-                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-4 overflow-hidden">
-                                <div 
-                                    className="bg-blue-600 h-full rounded-full transition-all duration-300 ease-out relative" 
-                                    style={{ width: `${progress}%` }}
-                                >
-                                    <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
-                                </div>
-                            </div>
-
-                            {/* Breakdown */}
-                            <div className="grid grid-cols-2 md:grid-cols-2 gap-4 text-sm">
-                                <div className="bg-white/50 dark:bg-black/20 p-2 rounded">Movies: <span className="font-bold">{categoryCounts.movies}</span></div>
-                                <div className="bg-white/50 dark:bg-black/20 p-2 rounded">TV Shows: <span className="font-bold">{categoryCounts.tv}</span></div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* 3. Yearly Generator Section */}
-                <div className="bg-white dark:bg-[#1e1e1e] rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-8 mb-8">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Yearly Archive Generator</h1>
-                            <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
-                                Generate a deep sitemap (~50,000 items) for specific years. Includes Movies, TV, and <strong>Profile Pages</strong>.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-4 items-end">
-                         <div className="w-full sm:w-40">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Year</label>
-                            <input 
-                                type="number" 
-                                value={yearStart}
-                                onChange={(e) => setYearStart(parseInt(e.target.value))}
-                                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-[#2a2a2a] border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
-                            />
-                        </div>
-                        <div className="w-full sm:w-40">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Year</label>
-                            <input 
-                                type="number" 
-                                value={yearEnd}
-                                onChange={(e) => setYearEnd(parseInt(e.target.value))}
-                                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-[#2a2a2a] border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
-                            />
-                        </div>
-                         <button 
-                            onClick={generateYearlySitemap}
-                            disabled={isGenerating || isGeneratingYearly}
-                            className={`flex items-center justify-center gap-2 px-6 py-3 text-white rounded-lg font-bold shadow-md transition-all h-[46px] ${isGeneratingYearly ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 hover:scale-105 active:scale-95'}`}
+                        <button 
+                            onClick={fetchAllData}
+                            disabled={isGenerating}
+                            className={`flex items-center justify-center gap-2 px-8 py-4 text-white rounded-lg font-bold shadow-xl transition-all ${isGenerating ? 'bg-gray-400 cursor-not-allowed' : 'bg-brand-primary text-black hover:bg-brand-primary/90'}`}
                         >
-                            {isGeneratingYearly ? (
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            ) : (
-                                <CalendarIcon />
-                            )}
-                            <span>{isGeneratingYearly ? 'Generating...' : 'Generate Deep Archive'}</span>
+                            {isGenerating ? <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div> : <UploadCloudIcon className="w-6 h-6" />}
+                            <span>{isGenerating ? 'Generating Bundle...' : 'Download Sitemaps ZIP'}</span>
                         </button>
                     </div>
 
-                    {/* Yearly Progress Indicator */}
-                    {(isGeneratingYearly || yearlyCount > 0) && !isGenerating && (
-                        <div className="mt-6 bg-green-50 dark:bg-green-900/10 p-6 rounded-lg border border-green-100 dark:border-green-900/30">
-                            <div className="flex justify-between items-center mb-3">
-                                <span className="font-semibold text-green-800 dark:text-green-200 flex items-center gap-2">
-                                    {isGeneratingYearly ? <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div> : <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
-                                    {yearlyStatus}
-                                </span>
-                                <span className="text-lg font-bold text-green-700 dark:text-green-300">{yearlyCount.toLocaleString()} new items</span>
+                    {isGenerating && (
+                        <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-lg border border-blue-100 dark:border-blue-900/30">
+                            <div className="flex justify-between items-center mb-4">
+                                <span className="font-semibold text-blue-800 dark:text-blue-200">{statusMessage}</span>
+                                <span className="text-lg font-bold text-blue-700 dark:text-blue-300">{progress}%</span>
                             </div>
                             
-                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-1 overflow-hidden">
-                                <div 
-                                    className="bg-green-600 h-full rounded-full transition-all duration-300 ease-out relative" 
-                                    style={{ width: `${yearlyProgress}%` }}
-                                >
-                                    <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
-                                </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-6 overflow-hidden">
+                                <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-bold uppercase tracking-wider">
+                                <ProgressBadge label="Movies" count={counts.movies} total={25000} />
+                                <ProgressBadge label="TV Shows" count={counts.tv} total={15000} />
+                                <ProgressBadge label="People" count={counts.people} total={5000} />
+                                <ProgressBadge label="Networks" count={counts.networks} total={5000} />
                             </div>
                         </div>
                     )}
-
                 </div>
-
-                <div className="mt-8 border-t border-gray-200 dark:border-gray-800 pt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Static Pages Included in Base Generator</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {staticRoutes.map(route => (
-                            <a 
-                                key={route.path}
-                                href={route.path}
-                                onClick={(e) => { e.preventDefault(); onNavigate(route.path); }}
-                                className="px-3 py-1.5 bg-gray-100 dark:bg-[#2a2a2a] text-gray-600 dark:text-gray-300 rounded-md text-sm hover:bg-gray-200 dark:hover:bg-[#333] transition-colors"
-                            >
-                                {route.name}
-                            </a>
-                        ))}
-                    </div>
-                </div>
-
             </div>
         </div>
     );
 };
 
 const StatCard = ({ label, count, loading, icon, color }: any) => (
-    <div className="bg-white dark:bg-[#1e1e1e] p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
-        <div className={`p-3 rounded-lg ${color} bg-opacity-10 text-${color.replace('bg-', '')}`}>
-            {/* Clone icon to enforce size/color if needed, or rely on wrapper */}
-            <div className={`text-${color.replace('bg-', '')}-600 dark:text-${color.replace('bg-', '')}-400`}>
-                {icon}
-            </div>
-        </div>
+    <div className="bg-white dark:bg-[#1e1e1e] p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center gap-4">
+        <div className={`p-3 rounded-lg ${color} bg-opacity-10 text-current`}>{icon}</div>
         <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold mb-1">{label}</p>
-            {loading ? (
-                <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-            ) : (
-                <p className="text-2xl font-extrabold text-gray-900 dark:text-white">
-                    {count > 0 ? count.toLocaleString() : '-'}
-                </p>
-            )}
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-bold mb-1">{label}</p>
+            {loading ? <div className="h-8 w-24 bg-gray-100 dark:bg-gray-800 rounded animate-pulse"></div> : <p className="text-2xl font-extrabold">{count.toLocaleString()}</p>}
         </div>
+    </div>
+);
+
+const ProgressBadge = ({ label, count, total }: any) => (
+    <div className="bg-white/50 dark:bg-black/20 p-3 rounded-lg border border-white/10">
+        <div className="text-gray-500 mb-1">{label}</div>
+        <div className="text-lg text-gray-900 dark:text-white">{count.toLocaleString()} / {total.toLocaleString()}</div>
     </div>
 );
 
