@@ -1,8 +1,7 @@
-
 User-agent: *
 Allow: /
 Disallow: /settings
 Disallow: /my-list
 Disallow: /api/
 
-Sitemap: /sitemap.xml
+Sitemap: https://www.watchlistey.com/sitemap/sitemap-index.xml
