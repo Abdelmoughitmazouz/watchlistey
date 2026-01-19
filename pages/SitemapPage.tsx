@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import JSZip from 'jszip';
-import { GENRES, discoverMedia, slugify, getPopularPeople, searchSpecific } from '../lib/tmdb';
+import { discoverMedia, slugify, getPopularPeople, searchSpecific } from '../lib/tmdb';
 import { Show } from '../types';
 import { useSEO } from '../hooks/useSEO';
-import { UploadCloudIcon, CalendarIcon } from '../constants';
+import { UploadCloudIcon } from '../constants';
 
 interface SitemapPageProps {
     onNavigate: (path: string) => void;
@@ -46,7 +46,7 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
                 setStats({
                     movies: movies.total_results,
                     tv: tv.total_results,
-                    people: 1000000 // TMDB has a lot
+                    people: 1000000 
                 });
             } catch (e) {
                 console.error(e);
@@ -85,8 +85,6 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
             if (item.media_type === 'movie') path = `/movie/${slug}`;
             else if (item.media_type === 'tv') path = `/tv/${slug}`;
             else if (item.media_type === 'person') path = `/person/${slug}`;
-            /* FIX: Removed the direct comparison item.media_type === 'company' because 'company' is not in the media_type union type, 
-               which caused a TypeScript error. We now solely rely on (item as any).media_type. */
             else if ((item as any).media_type === 'company') path = `/network/${slug}`;
 
             let imageTag = '';
@@ -115,7 +113,7 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
             // 1. Movies (25,000 items -> 5 files)
             const movieItems: Show[] = [];
             const MOVIE_TOTAL = 25000;
-            const MOVIE_PAGES = MOVIE_TOTAL / ITEMS_PER_PAGE;
+            const MOVIE_PAGES = Math.ceil(MOVIE_TOTAL / ITEMS_PER_PAGE);
             
             for (let i = 1; i <= MOVIE_PAGES; i++) {
                 setStatusMessage(`Fetching Movies (Page ${i}/${MOVIE_PAGES})...`);
@@ -123,14 +121,14 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
                 if (!data.results.length) break;
                 movieItems.push(...data.results);
                 setCounts(prev => ({ ...prev, movies: movieItems.length }));
-                setProgress(Math.round((i / (MOVIE_PAGES * 3)) * 100));
-                if (i % 10 === 0) await delay(150); // Be kind to API
+                setProgress(Math.round((i / (MOVIE_PAGES + 750 + 250 + 250)) * 100)); // weighted progress
+                if (i % 50 === 0) await delay(100); 
             }
 
             // 2. TV Shows (15,000 items -> 3 files)
             const tvItems: Show[] = [];
             const TV_TOTAL = 15000;
-            const TV_PAGES = TV_TOTAL / ITEMS_PER_PAGE;
+            const TV_PAGES = Math.ceil(TV_TOTAL / ITEMS_PER_PAGE);
             
             for (let i = 1; i <= TV_PAGES; i++) {
                 setStatusMessage(`Fetching TV Shows (Page ${i}/${TV_PAGES})...`);
@@ -138,29 +136,30 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
                 if (!data.results.length) break;
                 tvItems.push(...data.results);
                 setCounts(prev => ({ ...prev, tv: tvItems.length }));
-                setProgress(33 + Math.round((i / (TV_PAGES * 3)) * 100));
-                if (i % 10 === 0) await delay(150);
+                setProgress(Math.round(((MOVIE_PAGES + i) / (MOVIE_PAGES + TV_PAGES + 500)) * 100));
+                if (i % 50 === 0) await delay(100);
             }
 
             // 3. People (5,000 items -> 1 file)
             const personItems: Show[] = [];
-            const PERSON_PAGES = CHUNK_SIZE / ITEMS_PER_PAGE;
+            const PERSON_TOTAL = 5000;
+            const PERSON_PAGES = Math.ceil(PERSON_TOTAL / ITEMS_PER_PAGE);
             for (let i = 1; i <= PERSON_PAGES; i++) {
                 setStatusMessage(`Fetching Popular People (Page ${i}/${PERSON_PAGES})...`);
                 const data = await getPopularPeople(i);
                 if (!data.length) break;
                 personItems.push(...data);
                 setCounts(prev => ({ ...prev, people: personItems.length }));
-                setProgress(66 + Math.round((i / (PERSON_PAGES * 3)) * 100));
-                if (i % 10 === 0) await delay(150);
+                if (i % 50 === 0) await delay(100);
             }
 
             // 4. Networks (5,000 items -> 1 file)
             const networkItems: Show[] = [];
-            const NETWORK_PAGES = CHUNK_SIZE / ITEMS_PER_PAGE;
+            const NETWORK_TOTAL = 5000;
+            const NETWORK_PAGES = Math.ceil(NETWORK_TOTAL / ITEMS_PER_PAGE);
             for (let i = 1; i <= NETWORK_PAGES; i++) {
                 setStatusMessage(`Fetching Networks (Page ${i}/${NETWORK_PAGES})...`);
-                // Use specific search for companies/networks with broad queries to harvest
+                // Use broad query to harvest companies
                 const data = await searchSpecific('a', 'company', i);
                 if (!data.results.length) break;
                 const mapped = data.results.map(n => ({
@@ -176,32 +175,39 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
                 }));
                 networkItems.push(...mapped);
                 setCounts(prev => ({ ...prev, networks: networkItems.length }));
-                if (i % 10 === 0) await delay(150);
+                if (i % 50 === 0) await delay(100);
             }
 
             setStatusMessage("Finalizing chunks and generating ZIP...");
 
-            // Helper to chunk and add to zip
-            const chunkAndAdd = (arr: Show[], namePrefix: string) => {
-                for (let i = 0; i < arr.length; i += CHUNK_SIZE) {
-                    const chunk = arr.slice(i, i + CHUNK_SIZE);
+            // Helper to chunk and add to zip with specific naming
+            const chunkAndAdd = (arr: Show[], namePrefix: string, limit: number, forceSingle: boolean = false) => {
+                const dataToProcess = arr.slice(0, limit);
+                if (forceSingle) {
+                    const xml = generateSitemapXml(dataToProcess, baseUrl);
+                    zip.file(`${namePrefix}.xml`, xml);
+                    return;
+                }
+                for (let i = 0; i < dataToProcess.length; i += CHUNK_SIZE) {
+                    const chunk = dataToProcess.slice(i, i + CHUNK_SIZE);
                     const fileIndex = (i / CHUNK_SIZE) + 1;
                     const xml = generateSitemapXml(chunk, baseUrl);
                     zip.file(`${namePrefix}-${fileIndex}.xml`, xml);
                 }
             };
 
-            chunkAndAdd(movieItems, 'movies');
-            chunkAndAdd(tvItems, 'tv-show');
-            chunkAndAdd(personItems, 'person');
-            chunkAndAdd(networkItems, 'network');
+            // STRICT CATEGORIES & LIMITS
+            chunkAndAdd(movieItems, 'movies', 25000); // -> movies-1 to movies-5
+            chunkAndAdd(tvItems, 'tv-show', 15000);  // -> tv-show-1 to tv-show-3
+            chunkAndAdd(personItems, 'person', 5000, true); // -> person.xml
+            chunkAndAdd(networkItems, 'network', 5000, true); // -> network.xml
 
             // Generate ZIP
             const content = await zip.generateAsync({ type: 'blob' });
             const url = URL.createObjectURL(content);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'sitemaps.zip';
+            a.download = 'watchlistey-sitemaps.zip';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -223,11 +229,11 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 
                 <div className="mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Database Health</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Sitemap Aggregator</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <StatCard label="Movies" count={stats.movies} loading={statsLoading} icon={<MovieIcon />} color="bg-blue-500" />
-                        <StatCard label="TV Shows" count={stats.tv} loading={statsLoading} icon={<TvIcon />} color="bg-purple-500" />
-                        <StatCard label="People" count={stats.people} loading={statsLoading} icon={<PersonIcon />} color="bg-yellow-500" />
+                        <StatCard label="Live Movies" count={stats.movies} loading={statsLoading} icon={<MovieIcon />} color="bg-blue-500" />
+                        <StatCard label="Live TV Shows" count={stats.tv} loading={statsLoading} icon={<TvIcon />} color="bg-purple-500" />
+                        <StatCard label="Live People" count={stats.people} loading={statsLoading} icon={<PersonIcon />} color="bg-yellow-500" />
                     </div>
                 </div>
 
@@ -236,17 +242,17 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Mass Sitemap Generator</h1>
                             <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
-                                Automatically creates chunked sitemaps (5,000 URLs per file) as requested.
-                                Files included: <strong>movies (1-5), tv-show (1-3), network, and person</strong>.
+                                Create sitemaps for <strong>25,000 Movies</strong> (5 files), <strong>15,000 TV Shows</strong> (3 files), 
+                                <strong>5,000 Networks</strong> (1 file), and <strong>5,000 People</strong> (1 file).
                             </p>
                         </div>
                         <button 
                             onClick={fetchAllData}
                             disabled={isGenerating}
-                            className={`flex items-center justify-center gap-2 px-8 py-4 text-white rounded-lg font-bold shadow-xl transition-all ${isGenerating ? 'bg-gray-400 cursor-not-allowed' : 'bg-brand-primary text-black hover:bg-brand-primary/90'}`}
+                            className={`flex items-center justify-center gap-2 px-8 py-4 rounded-lg font-bold shadow-xl transition-all ${isGenerating ? 'bg-gray-400 cursor-not-allowed' : 'bg-brand-primary text-black hover:bg-brand-primary/90'}`}
                         >
                             {isGenerating ? <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div> : <UploadCloudIcon className="w-6 h-6" />}
-                            <span>{isGenerating ? 'Generating Bundle...' : 'Download Sitemaps ZIP'}</span>
+                            <span>{isGenerating ? 'Processing...' : 'Download ZIP Bundle'}</span>
                         </button>
                     </div>
 
@@ -262,10 +268,10 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-bold uppercase tracking-wider">
-                                <ProgressBadge label="Movies" count={counts.movies} total={25000} />
-                                <ProgressBadge label="TV Shows" count={counts.tv} total={15000} />
-                                <ProgressBadge label="People" count={counts.people} total={5000} />
-                                <ProgressBadge label="Networks" count={counts.networks} total={5000} />
+                                <ProgressBadge label="Movies Harvested" count={counts.movies} total={25000} />
+                                <ProgressBadge label="TV Harvested" count={counts.tv} total={15000} />
+                                <ProgressBadge label="People Harvested" count={counts.people} total={5000} />
+                                <ProgressBadge label="Networks Harvested" count={counts.networks} total={5000} />
                             </div>
                         </div>
                     )}
