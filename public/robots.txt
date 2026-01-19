@@ -4,4 +4,4 @@ Disallow: /settings
 Disallow: /my-list
 Disallow: /api/
 
-Sitemap: https://www.watchlistey.com/sitemap/sitemap-index.xml
+Sitemap: https://www.watchlistey.com/sitemap.xml
