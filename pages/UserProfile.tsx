@@ -50,27 +50,28 @@ const UserProfile: React.FC<UserProfileProps> = ({
 
     return (
         <div className="min-h-screen bg-white dark:bg-[#0f0f0f] pb-12 transition-colors duration-200">
-            {/* Cover Image */}
-            <div className="h-48 md:h-64 w-full bg-gray-200 dark:bg-[#1a1a1a] relative">
+            {/* Cover Image - Increased height for better aesthetics */}
+            <div className="h-64 md:h-80 lg:h-[400px] w-full bg-gray-200 dark:bg-[#1a1a1a] relative">
                 {user.cover_url && (
                     <img src={user.cover_url} alt="Cover" className="w-full h-full object-cover" />
                 )}
                 {isOwnProfile && (
                     <button 
                         onClick={() => onNavigate('/settings/profile')}
-                        className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-sm transition-colors"
+                        className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-sm transition-colors z-20"
                         title={t('nav.settings')}
                     >
                         <SettingsIconV2 className="w-5 h-5" />
                     </button>
                 )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="relative -mt-16 sm:-mt-20 mb-6 flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6">
                     {/* Avatar */}
                     <div className="relative">
-                        <div className="h-32 w-32 sm:h-40 sm:w-40 rounded-full ring-4 ring-white dark:ring-[#0f0f0f] bg-white dark:bg-[#1e1e1e] overflow-hidden">
+                        <div className="h-32 w-32 sm:h-40 sm:w-40 rounded-full ring-4 ring-white dark:ring-[#0f0f0f] bg-white dark:bg-[#1e1e1e] overflow-hidden shadow-xl">
                             <Avatar src={user.avatar_url} alt={user.name} size="lg" className="w-full h-full" />
                         </div>
                         {user.is_verified && (
@@ -106,7 +107,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
                 {/* Bio */}
                 {user.bio && (
                     <div className="mb-8 max-w-3xl">
-                        <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line">{user.bio}</p>
+                        <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{user.bio}</p>
                     </div>
                 )}
 
