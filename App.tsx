@@ -40,7 +40,6 @@ import BlogPost from './pages/BlogPost';
 import TMDBDemo from './pages/TMDBDemo';
 import TierListsPage from './pages/TierListPage';
 import TierListBuilder from './pages/TierListBuilder';
-import AdSense from './components/AdSense';
 import { useTranslation } from 'react-i18next';
 import { currentUser as demoUser } from './constants';
 
@@ -245,9 +244,6 @@ const App = () => {
                     <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-12 mt-8">
                         <ContentCarousel title={t('nav.movies')} shows={movies} onShowClick={(s) => handleNavigate(`/movie/${slugify(s.title)}`, s)} userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} />
                         
-                        {/* Display Ad Unit on Home Page */}
-                        <AdSense slot="5904887585" format="auto" />
-
                         <ContentCarousel title={t('nav.tv')} shows={tvShows} onShowClick={(s) => handleNavigate(`/tv/${slugify(s.title)}`, s)} userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} />
                         <PromoSection userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} shows={movies} onNavigate={handleNavigate} />
                         <ContentCarousel title={t('genres.Action')} shows={actionMovies} onShowClick={(s) => handleNavigate(`/movie/${slugify(s.title)}`, s)} userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} />
@@ -308,13 +304,6 @@ const App = () => {
                 <Header onNavigate={handleNavigate} isLoggedIn={!!user} onLogin={() => handleNavigate('/login')} onLogout={() => setUser(undefined)} user={user} isDark={isDark} toggleTheme={() => setIsDark(!isDark)} hasHero={hasHero} notifications={notifications} />
             )}
             {renderContent()}
-
-            {/* Global Ad Placement Unit: Auto-relaxed above Footer */}
-            {!['login', 'signup', 'forgot-password'].includes(currentRoute.rest) && !isBuilderRoute && (
-                <div className="max-w-7xl mx-auto px-4 md:px-8">
-                    <AdSense slot="3812795414" format="autorelaxed" />
-                </div>
-            )}
 
             {!['login', 'signup', 'forgot-password', 'my-list', 'settings'].includes(currentRoute.rest) && !currentRoute.rest.startsWith('search') && !isBuilderRoute && <Footer onNavigate={handleNavigate} />}
         </div>

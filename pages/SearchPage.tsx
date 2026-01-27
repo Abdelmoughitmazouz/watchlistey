@@ -5,7 +5,6 @@ import { searchMulti, slugify, discoverMedia, getPopularPeople } from '../lib/tm
 import { searchUsers } from '../lib/supabaseClient';
 import ShowCard from '../components/ShowCard';
 import FilterSidebar from '../components/FilterSidebar';
-import AdSense from '../components/AdSense';
 import { useTranslation } from 'react-i18next';
 
 interface SearchPageProps {
@@ -350,9 +349,6 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
                                 {t('search.filters')} {activeFiltersCount > 0 && `(${activeFiltersCount})`}
                             </button>
                         </div>
-
-                        {/* Ad Placement: Top of results Unit */}
-                        <AdSense slot="5904887585" className="mb-8" />
 
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <p className="text-sm text-gray-500 dark:text-gray-400">

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Show, User, ListStatus, ListItem, CastMember, Episode, AppNotification, Subscription } from '../types';
 import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, StarIcon, ArrowRightIcon, XIcon, FacebookIconV2, InstagramIcon, LinkIcon, UserPlaceholderIcon, CaretDownIcon, CalendarIcon } from '../constants';
@@ -14,7 +13,6 @@ import { useSEO } from '../hooks/useSEO';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import EpisodeCountdown from '../components/EpisodeCountdown';
 import NextEpisodeCard from '../components/NextEpisodeCard';
-import AdSense from '../components/AdSense';
 import { useTranslation } from 'react-i18next';
 
 interface ShowDetailProps {
@@ -782,9 +780,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                 </div>
 
                 {moreLikeThis.length > 0 && <div className="mt-16"><ContentCarousel title={t('details.more_like_this')} shows={moreLikeThis} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; if (s.is_anime) prefix = '/anime/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} /></div>}
-
-                {/* Ad Placement 1: Above Comments */}
-                <AdSense slot="5904887585" format="auto" />
 
                 <div className="mt-16 w-full">
                     <CommentsSection showId={show.id} onViewUser={handleViewUser} currentUser={currentUser} />

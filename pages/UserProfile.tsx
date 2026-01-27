@@ -3,7 +3,6 @@ import { User, Show, ListStatus, ListItem } from '../types';
 import { PlusIcon, VerifiedBadgeIcon, XIcon, FacebookIconV2, InstagramIcon, YouTubeIcon, SettingsIconV2 } from '../constants';
 import UserShowList from '../components/UserShowList';
 import { Avatar } from '../components/Avatar';
-import AdSense from '../components/AdSense';
 import { useTranslation } from 'react-i18next';
 import { getShowDetails, getPersonDetails, mapTMDBToShow } from '../lib/tmdb';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
@@ -124,7 +123,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
                     </div>
                 ) : (
                     <div className="min-h-[400px]">
-                        {/* Custom Layout for Profile to include Sidebar Ad */}
+                        {/* Custom Layout for Profile */}
                         <div className="flex flex-col lg:flex-row gap-8">
                              <div className="flex-1 min-w-0">
                                 <UserShowList 
@@ -139,14 +138,6 @@ const UserProfile: React.FC<UserProfileProps> = ({
                                     defaultTab={activeTab === 'All' ? 'All' : activeTab}
                                 />
                              </div>
-                             {/* Optional Sidebar Ad Column for Desktop */}
-                             {!isOwnProfile && (
-                                <div className="hidden xl:block w-72 flex-shrink-0">
-                                    <div className="sticky top-24">
-                                        <AdSense slot="5904887585" format="fluid" className="mt-0" />
-                                    </div>
-                                </div>
-                             )}
                         </div>
                     </div>
                 )}
