@@ -1,4 +1,3 @@
-
 import { Show, CastMember, Season } from '../types';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { isContentSafe } from './contentSafety';

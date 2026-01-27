@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Show, ListStatus, ListItem } from '../types';
 import { HeartIcon, UserPlaceholderIcon, FaceSmileIcon, FaceNeutralIcon, FaceFrownIcon } from '../constants';
@@ -35,16 +34,11 @@ const ShowCard: React.FC<ShowCardProps> = ({ show, onShowClick, userList, userFa
         } else if (show.media_type === 'season' && show.parent_show_title && show.season_number !== undefined) {
             const parentSlug = slugify(show.parent_show_title);
             // Seasons don't have a direct top-level localized route usually, handled via TV path
-            // But we can construct the internal TV path and localize that.
-            // Internal: /tv/slug/season/1
-            // Localized: /ja/テレビ/slug/season/1 (We only localize the 'tv' part usually)
             // For simplicity, let's treat season links as extensions of the show link
             internalPath = `/tv/${parentSlug}/season/${show.season_number}`;
         } else {
+            // Revert all anime/manga back to their TMDB source types (tv or movie)
             let type = show.media_type === 'tv' ? 'tv' : 'movie';
-            if (show.is_anime) type = 'anime';
-            if (show.is_manga) type = 'manga';
-            
             internalPath = `/${type}/${slug}`;
         }
         

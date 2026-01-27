@@ -1,4 +1,3 @@
-
 export interface ListItem {
   id: number;
   show_id: number;
@@ -7,7 +6,7 @@ export interface ListItem {
   rating?: number;
   notes?: string;
   added_at: string;
-  media_type?: 'movie' | 'tv' | 'person' | 'season' | 'anime' | 'manga' | 'user';
+  media_type?: 'movie' | 'tv' | 'person' | 'season' | 'user';
   is_favorite?: boolean;
   
   // Denormalized Data for Instant Loading
@@ -91,7 +90,7 @@ export interface Show {
   promo_video_url?: string;
   gallery_urls?: string[];
   participants?: User[]; // App users watching this
-  media_type?: 'movie' | 'tv' | 'person' | 'season' | 'anime' | 'manga' | 'user';
+  media_type?: 'movie' | 'tv' | 'person' | 'season' | 'user';
   provider?: 'tmdb' | 'anilist'; // Source of the data
   is_anime?: boolean;
   is_manga?: boolean;

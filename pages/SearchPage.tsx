@@ -228,9 +228,9 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
         if (show.media_type === 'person') {
             onNavigate(`/person/${slug}`, show);
         } else {
+            // Remove anime prefix logic, titles now always use /tv/ or /movie/ based on their TMDB source
             const prefix = show.media_type === 'tv' ? '/tv/' : '/movie/';
-            if (show.is_anime) onNavigate(`/anime/${slug}`, show);
-            else onNavigate(`${prefix}${slug}`, show);
+            onNavigate(`${prefix}${slug}`, show);
         }
     };
 

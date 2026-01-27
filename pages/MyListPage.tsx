@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Show, ListStatus, ListItem } from '../types';
 import ListStatusButton from '../components/ListStatusButton';
@@ -91,19 +90,11 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
                     if (type === 'person') {
                         const p = await getPersonDetails(id);
                         return p ? mapTMDBToShow({ ...p, media_type: 'person' }) : null;
-                    } else if (type === 'anime') {
-                        // Fallback: If type is 'anime' from DB, fetch as 'tv' from TMDB.
-                        // TMDB usually categorizes anime as TV shows with Animation genre.
+                    } else if (type === 'anime' || type === 'tv') {
                         const tmdbShow = await getShowDetails(id, 'tv');
-                        if (tmdbShow) {
-                            // Map it to look like an Anime item so it renders correctly
-                            return { ...tmdbShow, is_anime: true, media_type: 'anime' };
-                        }
-                        return null; // Should not happen if data is clean
-                    } else if (type === 'manga') {
-                        return null; // Manga deprecated
+                        return tmdbShow;
                     } else {
-                        // Movie or TV
+                        // Movie
                         let show = await getShowDetails(id, type);
                         return show;
                     }
@@ -169,14 +160,8 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
             const showId = item.show_id || (item as any).person_id;
             const show = availableShows.find(s => {
                 if (s.id !== showId) return false;
-                
-                // Strict Type Matching
-                // If item doesn't have explicit media_type, try to infer from source or fallback to tv/movie
                 const itemType = item.media_type || (item._source === 'characters' ? 'person' : null);
-                
                 if (itemType) return s.media_type === itemType;
-                
-                // If unknown, we try to match generic types (non-person)
                 return s.media_type !== 'person';
             });
 
@@ -219,7 +204,7 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
         if (show.media_type === 'person') {
             return `/person/${slug}`;
         }
-        const prefix = show.is_anime ? '/anime/' : show.media_type === 'tv' ? '/tv/' : '/movie/';
+        const prefix = show.media_type === 'tv' ? '/tv/' : '/movie/';
         return `${prefix}${slug}`;
     }
     
@@ -429,7 +414,7 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
                                                             {handleToggleFavorite && (
                                                                 <button 
                                                                     onClick={() => activeTab === 'Favorites' ? requestDelete(show) : handleToggleFavorite(show)}
-                                                                    className={`p-1 rounded-full ${show.is_favorite ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-gray-300 hover:text-red-500'}`}
+                                                                    className={`p-1 rounded-full ${show.is_favorite ? 'text-red-500 hover:bg-red-50 dark:bg-red-900/20' : 'text-gray-300 hover:text-red-500'}`}
                                                                     title={show.is_favorite ? (activeTab === 'Favorites' ? "Remove from Favorites" : "Unfavorite") : "Favorite"}
                                                                 >
                                                                     {activeTab === 'Favorites' ? <TrashIcon className="w-5 h-5 text-red-500" /> : <HeartIcon solid={show.is_favorite} className="w-5 h-5" />}

@@ -263,8 +263,8 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
 
     const handleViewFullCast = () => {
         const slug = slugify(show.title);
+        // Remove anime path handling
         let prefix = show.media_type === 'tv' ? '/tv/' : '/movie/';
-        if (show.is_anime) prefix = '/anime/';
         onNavigate(`${prefix}${slug}/cast`);
     };
 
@@ -772,14 +772,14 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                             </div>
                         )}
 
-                        {show.relations && show.relations.length > 0 && <ContentCarousel title={show.is_anime ? `${t('hero.seasons')} & ${t('details.related_media')}` : t('details.related_media')} shows={show.relations} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; if (s.is_anime) prefix = '/anime/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} />}
+                        {show.relations && show.relations.length > 0 && <ContentCarousel title={show.is_anime ? `${t('hero.seasons')} & ${t('details.related_media')}` : t('details.related_media')} shows={show.relations} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} />}
                         {!isSeasonPage && !show.is_manga && seasonShows.length > 0 && <div className="mt-8"><ContentCarousel title={t('hero.seasons')} shows={seasonShows} onShowClick={(s) => onNavigate(`/tv/${slugify(show.title)}/season/${s.season_number}`)} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} /></div>}
                         {show.promo_video_url && <PromoVideo videoUrl={show.promo_video_url} title={show.title} />}
                         {show.gallery_urls && show.gallery_urls.length > 0 && <ImageSlider images={show.gallery_urls} title={show.title} />}
                     </div>
                 </div>
 
-                {moreLikeThis.length > 0 && <div className="mt-16"><ContentCarousel title={t('details.more_like_this')} shows={moreLikeThis} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; if (s.is_anime) prefix = '/anime/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} /></div>}
+                {moreLikeThis.length > 0 && <div className="mt-16"><ContentCarousel title={t('details.more_like_this')} shows={moreLikeThis} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} /></div>}
 
                 <div className="mt-16 w-full">
                     <CommentsSection showId={show.id} onViewUser={handleViewUser} currentUser={currentUser} />
