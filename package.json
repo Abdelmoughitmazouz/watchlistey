@@ -21,7 +21,8 @@
     "vite": "^7.2.7",
     "@vitejs/plugin-react": "^5.1.2",
     "html2canvas": "^1.4.1",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "@google/genai": "latest"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

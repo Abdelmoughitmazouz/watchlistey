@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Show, User, ListStatus, ListItem, CastMember, Episode, AppNotification, Subscription } from '../types';
 import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, StarIcon, ArrowRightIcon, XIcon, FacebookIconV2, InstagramIcon, LinkIcon, UserPlaceholderIcon, CaretDownIcon, CalendarIcon } from '../constants';
@@ -5,6 +6,7 @@ import ContentCarousel from '../components/ContentCarousel';
 import PromoVideo from '../components/PromoVideo';
 import ImageSlider from '../components/ImageSlider';
 import CommentsSection from '../components/CommentsSection';
+import AIAnalysis from '../components/AIAnalysis'; // Import new component
 import { Avatar } from '../components/Avatar';
 import ListStatusButton from '../components/ListStatusButton';
 import { getGenreId, slugify, getRecommendations, getShowDetails, getSeasonDetails } from '../lib/tmdb';
@@ -261,11 +263,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
         onNavigate('/search?type=tv');
     };
 
-    const handleCreatorClick = (id: number, name: string) => {
-        const slug = slugify(name);
-        onNavigate(`/person/${slug}`);
-    };
-
     const handleViewFullCast = () => {
         const slug = slugify(show.title);
         let prefix = show.media_type === 'tv' ? '/tv/' : '/movie/';
@@ -288,26 +285,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
         } catch {
             return code.toUpperCase();
         }
-    };
-
-    const formatDate = (dateStr?: string) => {
-        if (!dateStr) return '-';
-        try {
-            return new Date(dateStr).toLocaleDateString(i18n.language, { year: 'numeric', month: 'short', day: 'numeric' });
-        } catch {
-            return dateStr;
-        }
-    };
-
-    const getSeason = (dateStr?: string) => {
-        if (!dateStr) return 'Unknown';
-        const date = new Date(dateStr);
-        const month = date.getMonth();
-        const year = date.getFullYear();
-        if (month >= 2 && month <= 4) return `Spring ${year}`;
-        if (month >= 5 && month <= 7) return `Summer ${year}`;
-        if (month >= 8 && month <= 10) return `Fall ${year}`;
-        return `Winter ${year}`;
     };
 
     const getFormat = () => {
@@ -421,8 +398,6 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
     };
 
     const networkLabel = show.is_anime ? t('details.studios') : t('details.networks');
-    const productionLabel = show.is_anime ? t('details.producers') : t('details.production');
-    const networkData = show.is_anime ? show.production_companies : show.networks;
     const productionData = show.is_anime ? show.networks : show.production_companies;
 
     const DESCRIPTION_LIMIT = 300;
@@ -582,6 +557,13 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                     isAnime={show.is_anime}
                                 />
                             )}
+
+                            {/* AI Insights Section */}
+                            {!isSeasonPage && show.media_type !== 'season' && (
+                                <div className="mt-8">
+                                    <AIAnalysis show={show} />
+                                </div>
+                            )}
                        </div>
                     </div>
                 </div>
@@ -648,11 +630,11 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                         <span className="text-gray-900 dark:text-white">{formatRuntime(show.runtime)}</span>
                                     </div>
                                 )}
-                                {networkData && networkData.length > 0 && (
+                                {show.networks && show.networks.length > 0 && (
                                     <div>
                                         <span className="block text-gray-500 dark:text-gray-400 font-medium">{networkLabel}</span>
                                         <div className="flex flex-wrap gap-2 mt-1">
-                                            {networkData.map((network) => (
+                                            {show.networks.map((network) => (
                                                 <button 
                                                     key={network.id}
                                                     onClick={() => onNavigate(`/network/${slugify(network.name)}`)}

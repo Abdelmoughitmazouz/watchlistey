@@ -57,8 +57,6 @@ const fetchTMDB = async (endpoint: string, params: Record<string, string> = {}, 
     const language = params.language || 'en-US';
     
     // IMAGE & VIDEO LANGUAGE STRATEGY
-    // If requesting a specific language (e.g., 'es-ES'), we want images/videos in that language.
-    // If not available, fallback to 'en' (English), then 'null'.
     const langCode = language.split('-')[0]; // Extract 'es' from 'es-ES'
     const includeImageLanguage = `${language},${langCode},en,null`;
     const includeVideoLanguage = `${language},${langCode},en,null`;
@@ -191,7 +189,6 @@ export const mapTMDBToShow = (item: any): Show => {
     const isJapanese = item.original_language === 'ja' || item.origin_country?.includes('JP');
     const isAnime = !!(isAnimation && isJapanese);
 
-    // If genres are provided as objects (from detailed fetch), use them. Otherwise map IDs.
     let genreNames: string[] = [];
     if (item.genres) {
         genreNames = item.genres.map((g: any) => g.name);
@@ -214,9 +211,8 @@ export const mapTMDBToShow = (item: any): Show => {
     const sourceCastList = item.aggregate_credits?.cast || item.credits?.cast;
     const cast: CastMember[] | undefined = sourceCastList?.map((c: any) => {
         let character = c.character;
-        // Fallback for aggregate credits which use 'roles' and might not have character at top level
         if (!character && c.roles && c.roles.length > 0) {
-            character = c.roles[0].character; // Use first role
+            character = c.roles[0].character; 
         }
         
         return {
@@ -233,11 +229,11 @@ export const mapTMDBToShow = (item: any): Show => {
     }
 
     const videos = item.videos?.results || [];
-    // Prioritize Trailer, then Teaser
     const trailer = videos.find((v: any) => v.site === 'YouTube' && v.type === 'Trailer') 
                  || videos.find((v: any) => v.site === 'YouTube' && v.type === 'Teaser');
-                 
-    const promoVideoUrl = trailer ? `https://www.youtube.com/embed/${trailer.key}` : undefined;
+    
+    // Add enablejsapi parameter as baseline for YouTube security requirements
+    const promoVideoUrl = trailer ? `https://www.youtube.com/embed/${trailer.key}?enablejsapi=1` : undefined;
 
     return {
         id: item.id,
@@ -283,7 +279,6 @@ export const getShowIdFromSlug = async (slug: string, type: 'movie' | 'tv' | 'pe
     
     try {
         const endpoint = type === 'person' ? '/search/person' : (type === 'movie' ? '/search/movie' : '/search/tv');
-        // Search matches logic universal, no language needed for ID resolution usually, but keeping English for max match
         const data = await fetchTMDB(endpoint, { query: cleanSlug.replace(/-/g, ' '), language });
         
         if (data?.results?.length) {
@@ -313,19 +308,13 @@ export const getShowDetails = async (id: number, type: 'movie' | 'tv', fetchColl
 
         if (!isContentSafe(data)) return null;
 
-        // Enhanced Logic for missing translations (Overview AND Cast Characters)
         if (language !== 'en-US') {
              const castList = data.aggregate_credits?.cast || data.credits?.cast || [];
-             // Check if any cast member has missing character name (or empty roles for aggregate)
              const needsCastFallback = castList.some((c: any) => {
-                 // For standard credits
                  if ('character' in c && !c.character) return true;
-                 // For aggregate credits (TV)
                  if (c.roles && Array.isArray(c.roles)) {
-                     // If roles array exists but contains entries without character name
                      return c.roles.some((r: any) => !r.character);
                  }
-                 // If using aggregate but no roles defined (unlikely but safe to check)
                  return false;
              });
 
@@ -336,12 +325,9 @@ export const getShowDetails = async (id: number, type: 'movie' | 'tv', fetchColl
                      const enData = await fetchTMDB(`/${type}/${id}`, { append_to_response: appendToResponse, language: 'en-US' });
                      
                      if (enData) {
-                         // Fallback Overview
                          if (needsOverview && enData.overview) {
                              data.overview = enData.overview;
                          }
-                         
-                         // Fallback Cast Characters
                          if (needsCastFallback) {
                              const enCast = enData.aggregate_credits?.cast || enData.credits?.cast || [];
                              const enCastMap = new Map(enCast.map((c: any) => [c.id, c]));
@@ -350,17 +336,13 @@ export const getShowDetails = async (id: number, type: 'movie' | 'tv', fetchColl
                              localCast.forEach((c: any) => {
                                  const enC: any = enCastMap.get(c.id);
                                  if (enC) {
-                                     // Standard character field
                                      if (!c.character && enC.character) c.character = enC.character;
-                                     
-                                     // Aggregate roles
                                      if (c.roles && enC.roles) {
                                          c.roles.forEach((r: any, i: number) => {
                                              if (!r.character && enC.roles && enC.roles[i]?.character) {
                                                  r.character = enC.roles[i].character;
                                              }
                                          });
-                                         // If local roles empty but english has them
                                          if (c.roles.length === 0 && enC.roles.length > 0) {
                                              c.roles = enC.roles;
                                          }
@@ -423,7 +405,6 @@ export const discoverMedia = async (
         include_adult: 'false'
     };
     
-    // Explicitly pass language to discover
     if (filters.language) params.language = filters.language;
 
     let genreIds: string[] = [];
@@ -472,7 +453,6 @@ export const discoverMedia = async (
     return { results: finalResults, total_results: totalResults };
 };
 
-// Specialized Search for specific endpoints
 export const searchSpecific = async (query: string, type: 'tv' | 'movie' | 'person' | 'company', page: number = 1, language: string = 'en-US'): Promise<{ results: any[], total_results: number }> => {
     const endpoint = `/search/${type}`;
     const data = await fetchTMDB(endpoint, { query, page: page.toString(), language });
@@ -537,14 +517,14 @@ export const getPersonCredits = async (personId: number, language: string = 'en-
 export const getRecommendations = async (id: number, type: 'movie' | 'tv', language: string = 'en-US') => {
     const data = await fetchTMDB(`/${type}/${id}/recommendations`, { language });
     return data?.results 
-        ? data.results.filter((item: any) => isContentSafe(item)).map(mapTMDBToShow).filter((s: Show) => s.id !== -1) // Removed !s.is_anime
+        ? data.results.filter((item: any) => isContentSafe(item)).map(mapTMDBToShow).filter((s: Show) => s.id !== -1)
         : [];
 };
 
 export const getShowsByNetwork = async (networkId: string, page: number = 1, language: string = 'en-US') => {
     const data = await fetchTMDB('/discover/tv', { with_networks: networkId, page: page.toString(), sort_by: 'popularity.desc', language });
     return data?.results 
-        ? data.results.filter((item: any) => isContentSafe(item)).map(mapTMDBToShow).filter((s: Show) => s.id !== -1) // Removed !s.is_anime
+        ? data.results.filter((item: any) => isContentSafe(item)).map(mapTMDBToShow).filter((s: Show) => s.id !== -1)
         : [];
 };
 
@@ -569,27 +549,27 @@ export const getPopularPeople = async (page: number = 1, language: string = 'en-
 
 export const getTrendingMovies = async (timeWindow: 'day' | 'week' = 'week', page: number = 1, language: string = 'en-US') => { 
     const data = await fetchTMDB(`/trending/movie/${timeWindow}`, { page: page.toString(), language }); 
-    return (data?.results?.filter((i: any) => isContentSafe(i)).map(mapTMDBToShow) || []).filter((s: Show) => s.id !== -1); // Removed !s.is_anime
+    return (data?.results?.filter((i: any) => isContentSafe(i)).map(mapTMDBToShow) || []).filter((s: Show) => s.id !== -1);
 };
 export const getTrendingTV = async (timeWindow: 'day' | 'week' = 'week', page: number = 1, language: string = 'en-US') => { 
     const data = await fetchTMDB(`/trending/tv/${timeWindow}`, { page: page.toString(), language }); 
-    return (data?.results?.filter((i: any) => isContentSafe(i)).map(mapTMDBToShow) || []).filter((s: Show) => s.id !== -1); // Removed !s.is_anime
+    return (data?.results?.filter((i: any) => isContentSafe(i)).map(mapTMDBToShow) || []).filter((s: Show) => s.id !== -1);
 };
 export const getTopRatedMovies = async (page: number = 1, language: string = 'en-US') => { 
     const data = await fetchTMDB('/movie/top_rated', { page: page.toString(), language }); 
-    return (data?.results?.filter((i: any) => isContentSafe(i)).map(mapTMDBToShow) || []).filter((s: Show) => s.id !== -1); // Removed !s.is_anime
+    return (data?.results?.filter((i: any) => isContentSafe(i)).map(mapTMDBToShow) || []).filter((s: Show) => s.id !== -1);
 };
 export const getActionMovies = async (page: number = 1, language: string = 'en-US') => { 
     const data = await fetchTMDB('/discover/movie', { with_genres: '28', page: page.toString(), language }); 
-    return (data?.results?.filter((i: any) => isContentSafe(i)).map(mapTMDBToShow) || []).filter((s: Show) => s.id !== -1); // Removed !s.is_anime
+    return (data?.results?.filter((i: any) => isContentSafe(i)).map(mapTMDBToShow) || []).filter((s: Show) => s.id !== -1);
 };
 export const getComedyMovies = async (page: number = 1, language: string = 'en-US') => { 
     const data = await fetchTMDB('/discover/movie', { with_genres: '35', page: page.toString(), language }); 
-    return (data?.results?.filter((i: any) => isContentSafe(i)).map(mapTMDBToShow) || []).filter((s: Show) => s.id !== -1); // Removed !s.is_anime
+    return (data?.results?.filter((i: any) => isContentSafe(i)).map(mapTMDBToShow) || []).filter((s: Show) => s.id !== -1);
 };
 export const getSciFiMovies = async (page: number = 1, language: string = 'en-US') => { 
     const data = await fetchTMDB('/discover/movie', { with_genres: '878', page: page.toString(), language }); 
-    return (data?.results?.filter((i: any) => isContentSafe(i)).map(mapTMDBToShow) || []).filter((s: Show) => s.id !== -1); // Removed !s.is_anime
+    return (data?.results?.filter((i: any) => isContentSafe(i)).map(mapTMDBToShow) || []).filter((s: Show) => s.id !== -1);
 };
 
 export const getShowsWithDetails = async (endpoint: string, params: Record<string, string> = {}, language: string = 'en-US'): Promise<Show[]> => {
@@ -599,7 +579,6 @@ export const getShowsWithDetails = async (endpoint: string, params: Record<strin
     const initialShows = data.results
         .filter((item: any) => isContentSafe(item))
         .map((item: any) => {
-             // Infer media_type if not present, based on endpoint
              let mediaType = item.media_type;
              if (!mediaType) {
                  if (endpoint.includes('movie')) mediaType = 'movie';
@@ -609,9 +588,8 @@ export const getShowsWithDetails = async (endpoint: string, params: Record<strin
              return { ...item, media_type: mediaType };
         })
         .map(mapTMDBToShow)
-        .filter((s: Show) => s.id !== -1); // Removed !s.is_anime
+        .filter((s: Show) => s.id !== -1);
 
-    // Fetch full details for each item to hydrate cast, images etc.
     const detailedShows = await Promise.all(initialShows.map(async (show: Show) => {
         if (show.media_type === 'movie' || show.media_type === 'tv') {
              const detailed = await getShowDetails(show.id, show.media_type, false, language);
