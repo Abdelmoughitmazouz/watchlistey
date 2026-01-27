@@ -130,11 +130,6 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, isLoggedIn, onLogin, onLogo
     return (
         <>
             <div className="fixed top-0 left-0 right-0 z-50 flex flex-col">
-                {/* Migration Notice Banner */}
-                <div className="bg-brand-primary text-black text-center py-2 px-4 text-sm font-bold relative z-[60]">
-                    Anime and Manga have been moved to <a href="https://www.animelab.org" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition-colors">animelab.org</a>
-                </div>
-
                 <header 
                     className={`w-full transition-colors duration-300 ${
                         isScrolled 
@@ -283,7 +278,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, isLoggedIn, onLogin, onLogo
 
             {/* Mobile Menu */}
              {isMobileMenuOpen && (
-                 <div className="lg:hidden fixed inset-0 top-[108px] bg-white dark:bg-[#0f0f0f] z-40 overflow-y-auto transition-colors duration-200">
+                 <div className="lg:hidden fixed inset-0 top-[72px] bg-white dark:bg-[#0f0f0f] z-40 overflow-y-auto transition-colors duration-200">
                      <div className="container mx-auto px-4 py-6 flex flex-col h-full">
                          <nav className="flex flex-col space-y-2 text-lg font-medium text-gray-900 dark:text-white">
                              <button onClick={() => handleNavClick('/')} className="text-start py-2.5 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-brand-primary transition-colors">{t('nav.home')}</button>
