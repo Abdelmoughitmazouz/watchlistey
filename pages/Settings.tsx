@@ -508,7 +508,7 @@ const Settings: React.FC<SettingsProps> = ({ initialTab = 'details', user, onUpd
     ];
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] pt-24 pb-12 transition-colors duration-200">
+        <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] pt-32 md:pt-40 pb-12 transition-colors duration-200">
             {notification && <Notification message={notification} onClose={() => setNotification(null)} />}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="lg:grid lg:grid-cols-12 lg:gap-x-5">
