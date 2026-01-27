@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { getPersonDetails, getPersonCredits, slugify, getShowIdFromSlug } from '../lib/tmdb';
 import { Show, ListItem } from '../types';
@@ -199,7 +200,7 @@ const PersonPage: React.FC<PersonPageProps> = ({ personId, onNavigate, onBack, u
                 <div className="flex flex-col md:flex-row gap-8 lg:gap-12">
                     
                     <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
-                        <div className="sticky top-32 max-h-[calc(100vh-10rem)] overflow-y-auto pr-2 scrollbar-hide">
+                        <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2 scrollbar-hide">
                             <div className="md:hidden mb-4">
                                 <button onClick={onBack} className="flex items-center gap-1 text-gray-600 dark:text-gray-300 font-medium rtl:flex-row-reverse">
                                     <ChevronLeftIcon className="w-5 h-5 rtl:rotate-180" /> {t('common.back')}

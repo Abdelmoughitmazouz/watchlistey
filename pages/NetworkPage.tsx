@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Show, ListItem, ListStatus } from '../types';
 import { ChevronLeftIcon, LinkIcon, PlusIcon } from '../constants';
@@ -194,7 +195,7 @@ const NetworkPage: React.FC<NetworkPageProps> = ({ networkId, onNavigate, onBack
                 <div className="flex flex-col md:flex-row md:items-start gap-8 lg:gap-12">
                     {/* Sidebar / Info */}
                     <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
-                         <div className="sticky top-32">
+                         <div className="sticky top-24">
                             {/* Card container */}
                              <div className="mb-6 flex items-center justify-center relative">
                                  {network.logo_path ? (
