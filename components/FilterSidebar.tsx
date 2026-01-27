@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { GENRES } from '../lib/tmdb';
 import { StarIcon, FilterIcon, SearchIconV2 } from '../constants';
@@ -61,7 +60,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
     return (
         <aside className={`lg:w-64 flex-shrink-0 ${isOpen ? 'block' : 'hidden lg:block'}`}>
-            <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-hide transition-colors duration-200 pe-2">
+            <div className="sticky top-32 max-h-[calc(100vh-10rem)] overflow-y-auto scrollbar-hide transition-colors duration-200 pe-2">
                 <div className="flex items-center justify-between mb-6 px-1">
                     <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 text-lg">
                          <FilterIcon className="w-5 h-5" /> {t('search.filters')}

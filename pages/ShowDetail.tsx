@@ -568,7 +568,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
 
                 <div className="mt-12 flex flex-col lg:flex-row gap-8 lg:gap-12">
                     <div className="w-full lg:w-72 flex-shrink-0 space-y-8">
-                        <div className="bg-transparent p-0 rounded-xl sticky top-24">
+                        <div className="bg-transparent p-0 rounded-xl sticky top-32">
                             <div className="flex gap-4 mb-8">
                                 {show.external_ids?.facebook_id && (
                                     <a href={`https://facebook.com/${show.external_ids.facebook_id}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#1877F2] transition-colors"><FacebookIconV2 className="w-6 h-6" /></a>

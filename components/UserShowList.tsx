@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Show, ListStatus, ListItem } from '../types';
 import { 
@@ -435,7 +434,7 @@ const UserShowList: React.FC<UserShowListProps> = ({
                         <span className="bg-gray-100 dark:bg-[#2a2a2a] px-2 py-0.5 rounded-full text-xs">{getTabCount(activeTab)}</span>
                     </button>
                     {isMobileFilterOpen && (
-                        <div className="mt-2 p-2 bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg">
+                        <div className="mt-2 p-2 bg-white dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg">
                             {renderSidebarNav()}
                         </div>
                     )}
@@ -443,7 +442,7 @@ const UserShowList: React.FC<UserShowListProps> = ({
 
                 {/* Desktop Sidebar */}
                 <div className="hidden lg:block w-64 flex-shrink-0">
-                    <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pe-2 scrollbar-hide">
+                    <div className="sticky top-32 max-h-[calc(100vh-10rem)] overflow-y-auto pe-2 scrollbar-hide">
                         {renderSidebarNav()}
                     </div>
                 </div>
