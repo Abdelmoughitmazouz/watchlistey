@@ -24,7 +24,7 @@ export interface UserActivity {
   user_id: string;
   show_id?: number;
   media_type?: 'movie' | 'tv' | 'person';
-  action: 'started_watching' | 'progress_updated' | 'completed' | 'dropped' | 'post' | 'rated';
+  action: 'started_watching' | 'progress_updated' | 'completed' | 'dropped' | 'post' | 'rated' | 'added_to_list' | 'paused_watching' | 'rewatching';
   content?: string;
   metadata: {
     title?: string;

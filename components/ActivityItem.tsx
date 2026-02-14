@@ -65,8 +65,20 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                         Dropped <span className="font-bold text-gray-900 dark:text-white">{title}</span>
                     </p>
                 );
+            case 'paused_watching':
+                return (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Paused <span className="font-bold text-gray-900 dark:text-white">{title}</span>
+                    </p>
+                );
+            case 'rewatching':
+                return (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Started rewatching <span className="font-bold text-gray-900 dark:text-white">{title}</span>
+                    </p>
+                );
             case 'post':
-                return null; // Content handled separately
+                return null; 
             default:
                 return null;
         }

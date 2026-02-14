@@ -176,7 +176,7 @@ const App = () => {
         if (!user) return false;
         let dbMediaType = show?.media_type || 'tv';
         
-        // Update local user state
+        // Update local user state for immediate response
         setUser(prev => {
             if (!prev) return undefined;
             const newList = { ...prev.list };
@@ -193,28 +193,53 @@ const App = () => {
             }
         });
 
-        if (!isSupabaseConfigured) {
-            console.log("Activity Linked (Local Simulation):", status, show?.title);
-            return true;
-        }
+        if (!isSupabaseConfigured) return true;
 
         try {
             if (status === null) {
                  if (dbMediaType === 'person') await supabase.from('characters').delete().match({ user_id: user.id, person_id: showId });
                  else await supabase.from('list_items').delete().match({ user_id: user.id, show_id: showId, media_type: dbMediaType });
             } else {
-                 if (dbMediaType === 'person') await supabase.from('characters').upsert({ user_id: user.id, person_id: showId, name: show?.title, profile_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), added_at: customAddedAt });
-                 else {
+                 if (dbMediaType === 'person') {
+                     await supabase.from('characters').upsert({ user_id: user.id, person_id: showId, name: show?.title, profile_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), added_at: customAddedAt });
+                 } else {
                      const payload: any = { user_id: user.id, show_id: showId, status: status, media_type: dbMediaType, updated_at: new Date().toISOString() };
                      if (customAddedAt) payload.added_at = customAddedAt;
                      if (show) { 
                          payload.title = show.title; 
                          payload.poster_path = show.image_url?.replace('https://image.tmdb.org/t/p/w500', ''); 
+                         payload.backdrop_path = show.backdrop_url?.replace('https://image.tmdb.org/t/p/w1280', '');
                          payload.vote_average = show.rating; 
                          payload.release_date = show.year ? `${show.year}-01-01` : null; 
                      }
-                     // The database trigger will automatically create an entry in user_activities
+                     
+                     // 1. Update List
                      await supabase.from('list_items').upsert(payload, { onConflict: 'user_id, show_id, media_type' });
+
+                     // 2. Explicitly POST TO FEED (as requested)
+                     const actionMap: Record<string, string> = {
+                        'Watching': 'started_watching',
+                        'Completed': 'completed',
+                        'Plan to Watch': 'added_to_list',
+                        'Planning': 'added_to_list',
+                        'Paused': 'paused_watching',
+                        'Dropped': 'dropped',
+                        'Rewatching': 'rewatching'
+                     };
+
+                     const action = actionMap[status];
+                     if (action && show) {
+                        await supabase.from('user_activities').insert({
+                            user_id: user.id,
+                            show_id: showId,
+                            media_type: dbMediaType,
+                            action: action,
+                            metadata: {
+                                title: show.title,
+                                image: show.image_url?.replace('https://image.tmdb.org/t/p/w500', '')
+                            }
+                        });
+                     }
                  }
             }
             return true;
