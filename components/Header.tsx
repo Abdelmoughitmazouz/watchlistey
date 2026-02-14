@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Logo, MenuIcon, CloseIcon, SearchIconV2, SunIcon, MoonIcon, BellIcon
@@ -148,11 +149,11 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, isLoggedIn, onLogin, onLogo
 
                                 {/* Desktop Navigation */}
                                 <nav className="hidden md:flex items-center gap-1">
-                                    <NavItem textColorClass={navTextColorClass} onClick={() => onNavigate('/search')}>{t('nav.browse')}</NavItem>
+                                    <NavItem textColorClass={navTextColorClass} onClick={() => onNavigate('/feed')}>Feed</NavItem>
+                                    <NavItem textColorClass={navTextColorClass} onClick={() => onNavigate('/search')}>Browse</NavItem>
                                     <NavItem textColorClass={navTextColorClass} onClick={() => onNavigate('/search?type=tv')}>{t('nav.tv')}</NavItem>
                                     <NavItem textColorClass={navTextColorClass} onClick={() => onNavigate('/search?type=movie')}>{t('nav.movies')}</NavItem>
                                     <NavItem textColorClass={navTextColorClass} onClick={() => onNavigate('/lists')}>{t('nav.lists')}</NavItem>
-                                    <NavItem textColorClass={navTextColorClass} onClick={() => onNavigate('/blog')}>{t('nav.blog')}</NavItem>
                                 </nav>
                             </div>
 
@@ -282,11 +283,11 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, isLoggedIn, onLogin, onLogo
                      <div className="container mx-auto px-4 py-6 flex flex-col h-full">
                          <nav className="flex flex-col space-y-2 text-lg font-medium text-gray-900 dark:text-white">
                              <button onClick={() => handleNavClick('/')} className="text-start py-2.5 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-brand-primary transition-colors">{t('nav.home')}</button>
+                             <button onClick={() => handleNavClick('/feed')} className="text-start py-2.5 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-brand-primary transition-colors">Feed</button>
                              <button onClick={() => handleNavClick('/search')} className="text-start py-2.5 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-brand-primary transition-colors">{t('nav.browse')}</button>
                              <button onClick={() => handleNavClick('/search?type=tv')} className="text-start py-2.5 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-brand-primary transition-colors">{t('nav.tv')}</button>
                              <button onClick={() => handleNavClick('/search?type=movie')} className="text-start py-2.5 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-brand-primary transition-colors">{t('nav.movies')}</button>
                              <button onClick={() => handleNavClick('/lists')} className="text-start py-2.5 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-brand-primary transition-colors">{t('nav.lists')}</button>
-                             <button onClick={() => handleNavClick('/blog')} className="text-start py-2.5 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-brand-primary transition-colors">{t('nav.blog')}</button>
                          </nav>
                          
                          {/* Mobile Language Switcher */}

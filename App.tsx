@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -40,6 +41,7 @@ import BlogPost from './pages/BlogPost';
 import TMDBDemo from './pages/TMDBDemo';
 import TierListsPage from './pages/TierListPage';
 import TierListBuilder from './pages/TierListBuilder';
+import FeedPage from './pages/FeedPage';
 import { useTranslation } from 'react-i18next';
 import { currentUser as demoUser } from './constants';
 
@@ -257,6 +259,7 @@ const App = () => {
         if (path === 'login') return <Login onLogin={() => handleNavigate('/')} onNavigate={handleNavigate} />;
         if (path === 'signup') return <SignUp onNavigate={handleNavigate} />;
         if (path === 'forgot-password') return <ForgotPassword onNavigate={handleNavigate} />;
+        if (path === 'feed') return <FeedPage onNavigate={handleNavigate} currentUser={user} />;
         if (path.startsWith('settings')) {
             const parts = path.split('/');
             const tab = parts[1] || 'details';

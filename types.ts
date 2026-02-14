@@ -1,9 +1,11 @@
+
 export interface ListItem {
   id: number;
   show_id: number;
   user_id: string;
   status: ListStatus;
   rating?: number;
+  progress?: number;
   notes?: string;
   added_at: string;
   media_type?: 'movie' | 'tv' | 'person' | 'season' | 'user';
@@ -15,6 +17,27 @@ export interface ListItem {
   backdrop_path?: string;
   vote_average?: number;
   release_date?: string;
+}
+
+export interface UserActivity {
+  id: number;
+  user_id: string;
+  show_id?: number;
+  media_type?: 'movie' | 'tv' | 'person';
+  action: 'started_watching' | 'progress_updated' | 'completed' | 'dropped' | 'post' | 'rated';
+  content?: string;
+  metadata: {
+    title?: string;
+    image?: string;
+    progress?: number;
+    prev_progress?: number;
+    rating?: number;
+    episode_range?: string; // For aggregated items
+  };
+  likes: number;
+  replies: number;
+  created_at: string;
+  user?: User; // Joined profile
 }
 
 export interface EpisodeActivity {
