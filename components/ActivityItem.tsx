@@ -94,39 +94,33 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
 
     return (
         <div className="bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all animate-fade-in group/item">
-            <div className="p-5 flex flex-col">
-                {/* Header Section: Profile at the TOP */}
-                <div className="flex items-center gap-3 mb-4">
-                    <button onClick={() => onNavigate(`/u/${user.username}`)} className="flex-shrink-0">
-                        <div className="relative">
-                            <Avatar src={user.avatar_url} alt={user.name} size="md" className="ring-2 ring-transparent group-hover/item:ring-brand-primary/30 transition-all" />
-                            <div className={`absolute -bottom-1 -right-1 p-1 rounded-full ${config.bg} text-white ring-2 ring-white dark:ring-[#121212] shadow-sm`}>
-                                <StatusIcon className="w-2.5 h-2.5" />
-                            </div>
+            <div className="p-5 flex gap-4">
+                {/* User Avatar */}
+                <button onClick={() => onNavigate(`/u/${user.username}`)} className="flex-shrink-0">
+                    <div className="relative">
+                        <Avatar src={user.avatar_url} alt={user.name} size="md" className="ring-2 ring-transparent group-hover/item:ring-brand-primary/30 transition-all" />
+                        <div className={`absolute -bottom-1 -right-1 p-1 rounded-full ${config.bg} text-white ring-2 ring-white dark:ring-[#121212] shadow-sm`}>
+                            <StatusIcon className="w-2.5 h-2.5" />
                         </div>
-                    </button>
-                    
-                    <div className="flex flex-col min-w-0">
-                        <button 
-                            onClick={() => onNavigate(`/u/${user.username}`)}
-                            className="font-bold text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate text-start"
-                        >
-                            {user.name}
-                        </button>
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500">
-                            {timeAgo(created_at)}
-                        </span>
                     </div>
+                </button>
 
-                    {/* Status Badge (Right Aligned) */}
-                    <div className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-tight ${config.color} bg-gray-50 dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800`}>
-                        <StatusIcon className="w-3 h-3" />
-                        <span>{config.label}</span>
-                    </div>
-                </div>
-
-                {/* Body Section */}
                 <div className="flex-1 min-w-0">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={() => onNavigate(`/u/${user.username}`)}
+                                className="font-bold text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate"
+                            >
+                                {user.name}
+                            </button>
+                            <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                                {timeAgo(created_at)}
+                            </span>
+                        </div>
+                    </div>
+
                     {/* Action Description */}
                     <div className="text-sm text-gray-600 dark:text-gray-400 leading-snug">
                         {renderActionText()}
