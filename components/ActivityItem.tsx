@@ -32,9 +32,14 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
 
     const renderActionText = () => {
         const title = metadata.title || 'Unknown Title';
-        const type = activity.media_type === 'movie' ? 'movie' : 'series';
         
         switch (action) {
+            case 'added_to_list':
+                return (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Added <span className="font-bold text-gray-900 dark:text-white">{title}</span> to their watchlist
+                    </p>
+                );
             case 'started_watching':
                 return (
                     <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -54,8 +59,14 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                         Completed <span className="font-bold text-gray-900 dark:text-white">{title}</span>
                     </p>
                 );
+            case 'dropped':
+                return (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Dropped <span className="font-bold text-gray-900 dark:text-white">{title}</span>
+                    </p>
+                );
             case 'post':
-                return null; // Content handled below
+                return null; // Content handled separately
             default:
                 return null;
         }

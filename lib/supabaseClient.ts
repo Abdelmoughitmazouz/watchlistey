@@ -346,7 +346,7 @@ CREATE TABLE IF NOT EXISTS user_activities (
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
     show_id BIGINT,
     media_type TEXT, -- 'movie', 'tv'
-    action TEXT NOT NULL, -- 'started_watching', 'progress_updated', 'completed', 'post', 'rated'
+    action TEXT NOT NULL, -- 'started_watching', 'progress_updated', 'completed', 'post', 'rated', 'added_to_list'
     content TEXT, -- For manual posts
     metadata JSONB DEFAULT '{}'::jsonb, -- Stores: { progress: 5, title: "One Piece", image: "..." }
     likes INTEGER DEFAULT 0,
@@ -366,6 +366,7 @@ BEGIN
             WHEN 'Watching' THEN activity_action := 'started_watching';
             WHEN 'Completed' THEN activity_action := 'completed';
             WHEN 'Dropped' THEN activity_action := 'dropped';
+            WHEN 'Planning' THEN activity_action := 'added_to_list';
             ELSE activity_action := NULL;
         END CASE;
         

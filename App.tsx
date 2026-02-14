@@ -175,6 +175,8 @@ const App = () => {
     const handleUpdateListStatus = async (showId: number, status: ListStatus | null, show?: Show, customAddedAt?: string) => {
         if (!user) return false;
         let dbMediaType = show?.media_type || 'tv';
+        
+        // Update local user state
         setUser(prev => {
             if (!prev) return undefined;
             const newList = { ...prev.list };
@@ -190,7 +192,12 @@ const App = () => {
                 return { ...prev, list: newList };
             }
         });
-        if (!isSupabaseConfigured) return true;
+
+        if (!isSupabaseConfigured) {
+            console.log("Activity Linked (Local Simulation):", status, show?.title);
+            return true;
+        }
+
         try {
             if (status === null) {
                  if (dbMediaType === 'person') await supabase.from('characters').delete().match({ user_id: user.id, person_id: showId });
@@ -200,12 +207,21 @@ const App = () => {
                  else {
                      const payload: any = { user_id: user.id, show_id: showId, status: status, media_type: dbMediaType, updated_at: new Date().toISOString() };
                      if (customAddedAt) payload.added_at = customAddedAt;
-                     if (show) { payload.title = show.title; payload.poster_path = show.image_url?.replace('https://image.tmdb.org/t/p/w500', ''); payload.vote_average = show.rating; payload.release_date = show.year ? `${show.year}-01-01` : null; }
+                     if (show) { 
+                         payload.title = show.title; 
+                         payload.poster_path = show.image_url?.replace('https://image.tmdb.org/t/p/w500', ''); 
+                         payload.vote_average = show.rating; 
+                         payload.release_date = show.year ? `${show.year}-01-01` : null; 
+                     }
+                     // The database trigger will automatically create an entry in user_activities
                      await supabase.from('list_items').upsert(payload, { onConflict: 'user_id, show_id, media_type' });
                  }
             }
             return true;
-        } catch (e) { return false; }
+        } catch (e) { 
+            console.error("List update failed", e);
+            return false; 
+        }
     };
 
     const handleToggleFavorite = async (show: Show) => {
