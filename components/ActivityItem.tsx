@@ -59,11 +59,11 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
 
     const renderActionText = () => {
         const title = metadata.title || 'Unknown Title';
-        const titleSpan = <span className="font-bold text-gray-900 dark:text-white group-hover:underline">“{title}”</span>;
+        const titleSpan = <span className="font-bold text-gray-900 dark:text-white group-hover:underline">{title}</span>;
         
         switch (action) {
             case 'added_to_list':
-                return <>Started planning {titleSpan}</>;
+                return <>Added {titleSpan} to their watchlist</>;
             case 'started_watching':
                 return <>Started watching {titleSpan}</>;
             case 'progress_updated':
@@ -77,6 +77,8 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                 return <>Paused {titleSpan}</>;
             case 'rewatching':
                 return <>Started rewatching {titleSpan}</>;
+            case 'post':
+                return null;
             default:
                 return null;
         }
@@ -91,120 +93,107 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
     };
 
     return (
-        <div className="bg-white dark:bg-[#0c0c0c] border border-gray-200 dark:border-gray-800 rounded-3xl overflow-hidden shadow-sm transition-all animate-fade-in group/item">
-            <div className="p-6 flex items-start gap-5">
-                {/* User Avatar - Fixed at top left */}
-                <button onClick={() => onNavigate(`/u/${user.username}`)} className="flex-shrink-0 mt-1">
+        <div className="bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all animate-fade-in group/item">
+            <div className="p-5 flex gap-4">
+                {/* User Avatar */}
+                <button onClick={() => onNavigate(`/u/${user.username}`)} className="flex-shrink-0">
                     <div className="relative">
-                        <Avatar 
-                            src={user.avatar_url} 
-                            alt={user.name} 
-                            size="md" 
-                            className="ring-2 ring-transparent group-hover/item:ring-brand-primary/30 transition-all rounded-full border border-gray-100 dark:border-gray-800" 
-                        />
+                        <Avatar src={user.avatar_url} alt={user.name} size="md" className="ring-2 ring-transparent group-hover/item:ring-brand-primary/30 transition-all" />
+                        <div className={`absolute -bottom-1 -right-1 p-1 rounded-full ${config.bg} text-white ring-2 ring-white dark:ring-[#121212] shadow-sm`}>
+                            <StatusIcon className="w-2.5 h-2.5" />
+                        </div>
                     </div>
                 </button>
 
                 <div className="flex-1 min-w-0">
-                    {/* Header Area */}
-                    <div className="flex items-center gap-2 mb-0.5">
-                        <button 
-                            onClick={() => onNavigate(`/u/${user.username}`)}
-                            className="text-base font-bold text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate"
-                        >
-                            {user.name}
-                        </button>
-                        <span className="text-sm text-gray-400 dark:text-gray-500 whitespace-nowrap font-medium">
-                            {timeAgo(created_at)}
-                        </span>
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={() => onNavigate(`/u/${user.username}`)}
+                                className="font-bold text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate"
+                            >
+                                {user.name}
+                            </button>
+                            <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                                {timeAgo(created_at)}
+                            </span>
+                        </div>
                     </div>
 
-                    {/* Activity Action Line */}
-                    <div className="text-[15px] text-gray-500 dark:text-gray-400 leading-tight mb-4">
+                    {/* Action Description */}
+                    <div className="text-sm text-gray-600 dark:text-gray-400 leading-snug">
                         {renderActionText()}
                     </div>
 
                     {/* Post Content (for manual posts) */}
                     {action === 'post' && content && (
-                        <p className="text-[15px] text-gray-800 dark:text-gray-200 mb-4 whitespace-pre-wrap leading-relaxed">
+                        <p className="text-[15px] text-gray-800 dark:text-gray-200 mt-2.5 whitespace-pre-wrap leading-relaxed">
                             {content}
                         </p>
                     )}
 
-                    {/* Media Attachment Card - Closely matching the screenshot */}
+                    {/* Media Attachment Card */}
                     {metadata.title && (
-                        <div className="flex items-center gap-4">
-                             {/* Extra optional side avatar from reference */}
-                            <div className="hidden sm:block flex-shrink-0">
-                                <div className="relative">
-                                    <Avatar src={user.avatar_url} size="sm" className="ring-2 ring-white dark:ring-[#0c0c0c] shadow-md" />
-                                    <div className={`absolute -bottom-1 -right-1 p-0.5 rounded-full ${config.bg} text-white ring-1 ring-white dark:ring-[#0c0c0c]`}>
-                                        <StatusIcon className="w-2 h-2" />
-                                    </div>
-                                </div>
+                        <div 
+                            onClick={handleMediaClick}
+                            className="mt-4 flex gap-4 p-4 bg-gray-50/50 dark:bg-[#1a1a1a]/50 rounded-xl border border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-100/80 dark:hover:bg-[#222] transition-all group/media"
+                        >
+                            <div className="w-16 h-24 bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0 shadow-sm relative">
+                                {metadata.image ? (
+                                    <img 
+                                        src={`https://image.tmdb.org/t/p/w200${metadata.image}`} 
+                                        alt={metadata.title} 
+                                        className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-500"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 font-bold uppercase">No Image</div>
+                                )}
                             </div>
-
-                            <div 
-                                onClick={handleMediaClick}
-                                className="flex-1 flex gap-5 p-5 bg-[#0f0f0f] dark:bg-[#0c0c0c] rounded-2xl border border-gray-200 dark:border-gray-800 cursor-pointer hover:bg-gray-100/10 dark:hover:bg-[#111] transition-all group/media relative overflow-hidden"
-                            >
-                                {/* Poster */}
-                                <div className="w-16 sm:w-20 h-24 sm:h-28 bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0 shadow-xl border border-white/5">
-                                    {metadata.image ? (
-                                        <img 
-                                            src={`https://image.tmdb.org/t/p/w200${metadata.image}`} 
-                                            alt={metadata.title} 
-                                            className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-700"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-500 font-black uppercase text-center p-2">No Poster</div>
-                                    )}
-                                </div>
-
-                                {/* Media Details */}
-                                <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-                                    <div className="space-y-1.5">
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-white truncate group-hover/media:text-brand-primary transition-colors">
-                                                “{metadata.title}”
-                                            </h4>
-                                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-gray-200 dark:bg-[#1a1a1a] text-gray-600 dark:text-gray-400 uppercase tracking-tighter">
-                                                {activity.media_type === 'movie' ? 'MOVIE' : 'SERIES'}
-                                            </span>
-                                        </div>
-                                        
-                                        <div className={`flex items-center gap-1.5 text-sm font-bold ${config.color}`}>
-                                            <StatusIcon className="w-4 h-4" />
+                            <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h4 className="text-base font-extrabold text-gray-900 dark:text-white truncate group-hover/media:text-brand-primary transition-colors">
+                                            {metadata.title}
+                                        </h4>
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-tighter">
+                                            {activity.media_type}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        {metadata.rating && metadata.rating > 0 && (
+                                            <div className="flex items-center gap-1 text-xs font-bold text-yellow-600 dark:text-brand-primary">
+                                                <StarIcon className="w-3 h-3" />
+                                                <span>{metadata.rating.toFixed(1)}</span>
+                                            </div>
+                                        )}
+                                        <div className={`flex items-center gap-1 text-xs font-bold ${config.color}`}>
+                                            <StatusIcon className="w-3.5 h-3.5" />
                                             <span>{config.label}</span>
                                         </div>
                                     </div>
-
-                                    {/* Footer Label */}
-                                    <div className="mt-4 flex items-center gap-2">
-                                        <p className="text-[10px] font-bold text-gray-500 dark:text-gray-500 tracking-widest uppercase">
-                                            Click to view details
-                                        </p>
-                                    </div>
                                 </div>
+                                <p className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Click to view details</p>
                             </div>
                         </div>
                     )}
 
                     {/* Social Footer */}
-                    <div className="mt-6 flex items-center justify-between">
-                        <div className="flex items-center gap-6">
-                            <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-red-500 transition-all transform active:scale-90">
-                                <HeartIcon className="w-5 h-5" />
-                                <span className="tabular-nums">{activity.likes || 0}</span>
-                            </button>
-                            <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-blue-500 transition-all transform active:scale-90">
-                                <CommentIcon className="w-5 h-5" />
-                                <span className="tabular-nums">{activity.replies || 0}</span>
-                            </button>
-                        </div>
-                        
-                        <button className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-100 dark:hover:bg-[#1a1a1a] transition-all">
-                            <ShareIcon className="w-5 h-5" />
+                    <div className="mt-5 flex items-center gap-7">
+                        <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-red-500 transition-all transform active:scale-90">
+                            <div className="p-1.5 rounded-full bg-gray-50 dark:bg-[#1a1a1a] group-hover/item:bg-gray-100 dark:group-hover/item:bg-[#252525]">
+                                <HeartIcon className="w-4 h-4" />
+                            </div>
+                            <span>{activity.likes || 0}</span>
+                        </button>
+                        <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-blue-500 transition-all transform active:scale-90">
+                            <div className="p-1.5 rounded-full bg-gray-50 dark:bg-[#1a1a1a] group-hover/item:bg-gray-100 dark:group-hover/item:bg-[#252525]">
+                                <CommentIcon className="w-4 h-4" />
+                            </div>
+                            <span>{activity.replies || 0}</span>
+                        </button>
+                        <button className="ml-auto p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] transition-all">
+                            <ShareIcon className="w-4 h-4" />
                         </button>
                     </div>
                 </div>
