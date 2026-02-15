@@ -94,27 +94,27 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
 
     return (
         <div className="bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all animate-fade-in group/item">
-            <div className="p-6">
+            <div className="p-4 sm:p-5">
                 {/* Header Row: Avatar, Name, Time, Action */}
-                <div className="flex gap-4 items-start mb-4">
+                <div className="flex gap-3 sm:gap-4 items-start mb-4">
                     <button onClick={() => onNavigate(`/u/${user.username}`)} className="flex-shrink-0">
                         <div className="relative">
                             <Avatar src={user.avatar_url} alt={user.name} size="md" className="ring-2 ring-transparent group-hover/item:ring-brand-primary/30 transition-all" />
-                            <div className={`absolute -bottom-1 -right-1 p-1 rounded-full ${config.bg} text-white ring-2 ring-white dark:ring-[#121212] shadow-sm`}>
+                            <div className={`absolute -bottom-1 -right-1 p-0.5 sm:p-1 rounded-full ${config.bg} text-white ring-2 ring-white dark:ring-[#121212] shadow-sm`}>
                                 <StatusIcon className="w-2.5 h-2.5" />
                             </div>
                         </div>
                     </button>
 
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
+                        <div className="flex items-center gap-2">
                             <button 
                                 onClick={() => onNavigate(`/u/${user.username}`)}
-                                className="font-bold text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate"
+                                className="font-bold text-[15px] text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate"
                             >
                                 {user.name}
                             </button>
-                            <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                            <span className="text-[11px] text-gray-400 dark:text-gray-500 whitespace-nowrap">
                                 {timeAgo(created_at)}
                             </span>
                         </div>
@@ -124,7 +124,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                     </div>
                 </div>
 
-                {/* Content Block: Media Card and Icons - Removing indentation to fill empty space */}
+                {/* Content Block: Media Card and Icons - Using full container width */}
                 <div className="space-y-4">
                     {/* Post Content (for manual posts) */}
                     {action === 'post' && content && (
@@ -137,9 +137,9 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                     {metadata.title && (
                         <div 
                             onClick={handleMediaClick}
-                            className="flex gap-4 p-4 bg-gray-50/50 dark:bg-[#1a1a1a]/50 rounded-xl border border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-100/80 dark:hover:bg-[#222] transition-all group/media"
+                            className="flex gap-4 p-3 sm:p-4 bg-gray-50/50 dark:bg-[#1a1a1a]/50 rounded-xl border border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-100/80 dark:hover:bg-[#222] transition-all group/media"
                         >
-                            <div className="w-16 h-24 bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0 shadow-sm relative">
+                            <div className="w-14 sm:w-16 h-20 sm:h-24 bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0 shadow-sm relative">
                                 {metadata.image ? (
                                     <img 
                                         src={`https://image.tmdb.org/t/p/w200${metadata.image}`} 
@@ -147,16 +147,16 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                                         className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-500"
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 font-bold uppercase">No Image</div>
+                                    <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-bold uppercase">No Image</div>
                                 )}
                             </div>
-                            <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
+                            <div className="flex-1 min-w-0 py-0.5 flex flex-col justify-between">
                                 <div>
-                                    <div className="flex items-center gap-2 mb-1">
+                                    <div className="flex items-center gap-2 mb-0.5">
                                         <h4 className="text-base font-extrabold text-gray-900 dark:text-white truncate group-hover/media:text-brand-primary transition-colors">
                                             {metadata.title}
                                         </h4>
-                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-tighter">
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-tighter">
                                             {activity.media_type === 'tv' ? 'Series' : 'Movie'}
                                         </span>
                                     </div>
@@ -168,29 +168,29 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                                             </div>
                                         )}
                                         <div className={`flex items-center gap-1 text-xs font-bold ${config.color}`}>
-                                            <StatusIcon className="w-3.5 h-3.5" />
+                                            <StatusIcon className="w-3 h-3" />
                                             <span>{config.label}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <p className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Click to view details</p>
+                                <p className="text-[9px] text-gray-400 font-bold tracking-wide uppercase">Click to view details</p>
                             </div>
                         </div>
                     )}
 
-                    {/* Social Footer - Aligned with the start of the content */}
-                    <div className="flex items-center justify-between pt-2">
-                        <div className="flex items-center gap-6">
-                            <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-red-500 transition-all transform active:scale-90 group/social">
+                    {/* Social Footer */}
+                    <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center gap-5 sm:gap-6">
+                            <button className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-red-500 transition-all transform active:scale-90 group/social">
                                 <HeartIcon className="w-5 h-5 group-hover/social:fill-red-500/10" />
-                                <span>{activity.likes || 0}</span>
+                                <span className="tabular-nums">{activity.likes || 0}</span>
                             </button>
-                            <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-blue-500 transition-all transform active:scale-90 group/social">
+                            <button className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-blue-500 transition-all transform active:scale-90 group/social">
                                 <CommentIcon className="w-5 h-5 group-hover/social:fill-blue-500/10" />
-                                <span>{activity.replies || 0}</span>
+                                <span className="tabular-nums">{activity.replies || 0}</span>
                             </button>
                         </div>
-                        <button className="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] transition-all">
+                        <button className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] transition-all">
                             <ShareIcon className="w-5 h-5" />
                         </button>
                     </div>
