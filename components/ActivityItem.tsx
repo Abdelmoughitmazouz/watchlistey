@@ -59,7 +59,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
 
     const renderActionText = () => {
         const title = metadata.title || 'Unknown Title';
-        const titleSpan = <span className="font-bold text-gray-900 dark:text-white group-hover:underline">{title}</span>;
+        const titleSpan = <span className="font-bold text-gray-900 dark:text-white group-hover:underline">"{title}"</span>;
         
         switch (action) {
             case 'added_to_list':
@@ -94,21 +94,20 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
 
     return (
         <div className="bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all animate-fade-in group/item">
-            <div className="p-5 flex gap-4 items-start">
-                {/* User Avatar - Adjusted upward with -mt-0.5 to align with the first line of text baseline */}
-                <button onClick={() => onNavigate(`/u/${user.username}`)} className="flex-shrink-0 -mt-0.5">
-                    <div className="relative">
-                        <Avatar src={user.avatar_url} alt={user.name} size="md" className="ring-2 ring-transparent group-hover/item:ring-brand-primary/30 transition-all" />
-                        <div className={`absolute -bottom-1 -right-1 p-1 rounded-full ${config.bg} text-white ring-2 ring-white dark:ring-[#121212] shadow-sm`}>
-                            <StatusIcon className="w-2.5 h-2.5" />
+            <div className="p-6">
+                {/* Header Row: Avatar, Name, Time, Action */}
+                <div className="flex gap-4 items-start mb-4">
+                    <button onClick={() => onNavigate(`/u/${user.username}`)} className="flex-shrink-0">
+                        <div className="relative">
+                            <Avatar src={user.avatar_url} alt={user.name} size="md" className="ring-2 ring-transparent group-hover/item:ring-brand-primary/30 transition-all" />
+                            <div className={`absolute -bottom-1 -right-1 p-1 rounded-full ${config.bg} text-white ring-2 ring-white dark:ring-[#121212] shadow-sm`}>
+                                <StatusIcon className="w-2.5 h-2.5" />
+                            </div>
                         </div>
-                    </div>
-                </button>
+                    </button>
 
-                <div className="flex-1 min-w-0">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
                             <button 
                                 onClick={() => onNavigate(`/u/${user.username}`)}
                                 className="font-bold text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate"
@@ -119,16 +118,17 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                                 {timeAgo(created_at)}
                             </span>
                         </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 leading-snug">
+                            {renderActionText()}
+                        </div>
                     </div>
+                </div>
 
-                    {/* Action Description */}
-                    <div className="text-sm text-gray-600 dark:text-gray-400 leading-snug">
-                        {renderActionText()}
-                    </div>
-
+                {/* Content Block: Media Card and Icons - Removing indentation to fill empty space */}
+                <div className="space-y-4">
                     {/* Post Content (for manual posts) */}
                     {action === 'post' && content && (
-                        <p className="text-[15px] text-gray-800 dark:text-gray-200 mt-2.5 whitespace-pre-wrap leading-relaxed">
+                        <p className="text-[15px] text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
                             {content}
                         </p>
                     )}
@@ -137,7 +137,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                     {metadata.title && (
                         <div 
                             onClick={handleMediaClick}
-                            className="mt-4 flex gap-4 p-4 bg-gray-50/50 dark:bg-[#1a1a1a]/50 rounded-xl border border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-100/80 dark:hover:bg-[#222] transition-all group/media"
+                            className="flex gap-4 p-4 bg-gray-50/50 dark:bg-[#1a1a1a]/50 rounded-xl border border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-100/80 dark:hover:bg-[#222] transition-all group/media"
                         >
                             <div className="w-16 h-24 bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0 shadow-sm relative">
                                 {metadata.image ? (
@@ -157,7 +157,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                                             {metadata.title}
                                         </h4>
                                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-tighter">
-                                            {activity.media_type}
+                                            {activity.media_type === 'tv' ? 'Series' : 'Movie'}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -178,22 +178,20 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                         </div>
                     )}
 
-                    {/* Social Footer */}
-                    <div className="mt-5 flex items-center gap-7">
-                        <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-red-500 transition-all transform active:scale-90">
-                            <div className="p-1.5 rounded-full bg-gray-50 dark:bg-[#1a1a1a] group-hover/item:bg-gray-100 dark:group-hover/item:bg-[#252525]">
-                                <HeartIcon className="w-4 h-4" />
-                            </div>
-                            <span>{activity.likes || 0}</span>
-                        </button>
-                        <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-blue-500 transition-all transform active:scale-90">
-                            <div className="p-1.5 rounded-full bg-gray-50 dark:bg-[#1a1a1a] group-hover/item:bg-gray-100 dark:group-hover/item:bg-[#252525]">
-                                <CommentIcon className="w-4 h-4" />
-                            </div>
-                            <span>{activity.replies || 0}</span>
-                        </button>
-                        <button className="ml-auto p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] transition-all">
-                            <ShareIcon className="w-4 h-4" />
+                    {/* Social Footer - Aligned with the start of the content */}
+                    <div className="flex items-center justify-between pt-2">
+                        <div className="flex items-center gap-6">
+                            <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-red-500 transition-all transform active:scale-90 group/social">
+                                <HeartIcon className="w-5 h-5 group-hover/social:fill-red-500/10" />
+                                <span>{activity.likes || 0}</span>
+                            </button>
+                            <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-blue-500 transition-all transform active:scale-90 group/social">
+                                <CommentIcon className="w-5 h-5 group-hover/social:fill-blue-500/10" />
+                                <span>{activity.replies || 0}</span>
+                            </button>
+                        </div>
+                        <button className="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] transition-all">
+                            <ShareIcon className="w-5 h-5" />
                         </button>
                     </div>
                 </div>
