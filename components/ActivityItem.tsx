@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { UserActivity } from '../types';
 import { Avatar } from './Avatar';
 import { 
@@ -31,6 +31,11 @@ const timeAgo = (dateStr: string) => {
 const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => {
     const { user, action, metadata, content, created_at } = activity;
     
+    // Interactivity State
+    const [likesCount, setLikesCount] = useState(activity.likes || 0);
+    const [isLiked, setIsLiked] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
+
     if (!user) return null;
 
     const getStatusConfig = () => {
@@ -92,13 +97,35 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
         }
     };
 
+    const handleLikeToggle = () => {
+        if (isLiked) {
+            setLikesCount(prev => Math.max(0, prev - 1));
+        } else {
+            setLikesCount(prev => prev + 1);
+        }
+        setIsLiked(!isLiked);
+    };
+
+    const handleShare = () => {
+        setIsSharing(true);
+        const url = window.location.origin + (activity.media_type === 'movie' ? '/movie/' : '/tv/') + slugify(metadata.title || '');
+        navigator.clipboard.writeText(url).then(() => {
+            setTimeout(() => setIsSharing(false), 2000);
+        });
+    };
+
     return (
         <div className="bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all animate-fade-in group/item">
             <div className="p-5 flex gap-4 items-start">
-                {/* User Avatar - Adjusted upward with -mt-0.5 to align with the first line of text baseline */}
+                {/* User Avatar Section */}
                 <button onClick={() => onNavigate(`/u/${user.username}`)} className="flex-shrink-0 -mt-0.5">
                     <div className="relative">
-                        <Avatar src={user.avatar_url} alt={user.name} size="md" className="ring-2 ring-transparent group-hover/item:ring-brand-primary/30 transition-all" />
+                        <Avatar 
+                            src={user.avatar_url} 
+                            alt={user.name} 
+                            size="md" 
+                            className="ring-2 ring-transparent group-hover/item:ring-brand-primary/30 transition-all duration-300" 
+                        />
                         <div className={`absolute -bottom-1 -right-1 p-1 rounded-full ${config.bg} text-white ring-2 ring-white dark:ring-[#121212] shadow-sm`}>
                             <StatusIcon className="w-2.5 h-2.5" />
                         </div>
@@ -106,7 +133,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                 </button>
 
                 <div className="flex-1 min-w-0">
-                    {/* Header */}
+                    {/* Header: User Info & Time */}
                     <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
                             <button 
@@ -121,24 +148,25 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                         </div>
                     </div>
 
-                    {/* Action Description */}
+                    {/* Action Description Row */}
                     <div className="text-sm text-gray-600 dark:text-gray-400 leading-snug">
                         {renderActionText()}
                     </div>
 
-                    {/* Post Content (for manual posts) */}
+                    {/* Post Content (Only for manual posts) */}
                     {action === 'post' && content && (
                         <p className="text-[15px] text-gray-800 dark:text-gray-200 mt-2.5 whitespace-pre-wrap leading-relaxed">
                             {content}
                         </p>
                     )}
 
-                    {/* Media Attachment Card */}
+                    {/* Media Attachment Card - Re-designed per user request */}
                     {metadata.title && (
                         <div 
                             onClick={handleMediaClick}
                             className="mt-4 flex gap-4 p-4 bg-gray-50/50 dark:bg-[#1a1a1a]/50 rounded-xl border border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-100/80 dark:hover:bg-[#222] transition-all group/media"
                         >
+                            {/* Card Poster */}
                             <div className="w-16 h-24 bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0 shadow-sm relative">
                                 {metadata.image ? (
                                     <img 
@@ -147,9 +175,11 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                                         className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-500"
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 font-bold uppercase">No Image</div>
+                                    <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-bold uppercase">No Image</div>
                                 )}
                             </div>
+
+                            {/* Card Details */}
                             <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
@@ -157,42 +187,63 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                                             {metadata.title}
                                         </h4>
                                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-tighter">
-                                            {activity.media_type}
+                                            {activity.media_type || 'media'}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3">
+                                        {/* Dynamic Rating if available */}
                                         {metadata.rating && metadata.rating > 0 && (
                                             <div className="flex items-center gap-1 text-xs font-bold text-yellow-600 dark:text-brand-primary">
                                                 <StarIcon className="w-3 h-3" />
                                                 <span>{metadata.rating.toFixed(1)}</span>
                                             </div>
                                         )}
+                                        {/* Status Badge */}
                                         <div className={`flex items-center gap-1 text-xs font-bold ${config.color}`}>
                                             <StatusIcon className="w-3.5 h-3.5" />
                                             <span>{config.label}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <p className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Click to view details</p>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2 group-hover/media:text-gray-500 transition-colors">
+                                    Click to view details
+                                </p>
                             </div>
                         </div>
                     )}
 
-                    {/* Social Footer */}
+                    {/* Social Footer - Re-designed per user request */}
                     <div className="mt-5 flex items-center gap-7">
-                        <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-red-500 transition-all transform active:scale-90">
-                            <div className="p-1.5 rounded-full bg-gray-50 dark:bg-[#1a1a1a] group-hover/item:bg-gray-100 dark:group-hover/item:bg-[#252525]">
-                                <HeartIcon className="w-4 h-4" />
+                        {/* Like Button */}
+                        <button 
+                            onClick={handleLikeToggle}
+                            className={`flex items-center gap-2 text-xs font-bold transition-all transform active:scale-90 ${isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+                        >
+                            <div className={`p-1.5 rounded-full transition-colors ${isLiked ? 'bg-red-50 dark:bg-red-900/10' : 'bg-gray-50 dark:bg-[#1a1a1a] group-hover/item:bg-gray-100 dark:group-hover/item:bg-[#252525]'}`}>
+                                <HeartIcon className="w-4 h-4" solid={isLiked} />
                             </div>
-                            <span>{activity.likes || 0}</span>
+                            <span className="tabular-nums">{likesCount}</span>
                         </button>
-                        <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-blue-500 transition-all transform active:scale-90">
+
+                        {/* Reply Button */}
+                        <button 
+                            className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-blue-500 transition-all transform active:scale-90"
+                        >
                             <div className="p-1.5 rounded-full bg-gray-50 dark:bg-[#1a1a1a] group-hover/item:bg-gray-100 dark:group-hover/item:bg-[#252525]">
                                 <CommentIcon className="w-4 h-4" />
                             </div>
-                            <span>{activity.replies || 0}</span>
+                            <span className="tabular-nums">{activity.replies || 0}</span>
                         </button>
-                        <button className="ml-auto p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] transition-all">
+
+                        {/* Share Button */}
+                        <button 
+                            onClick={handleShare}
+                            className={`ml-auto p-1.5 rounded-full transition-all flex items-center gap-2 ${isSharing ? 'text-green-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a]'}`}
+                            title="Share activity"
+                        >
+                            {isSharing ? (
+                                <span className="text-[10px] font-bold uppercase tracking-tight animate-fade-in">Copied!</span>
+                            ) : null}
                             <ShareIcon className="w-4 h-4" />
                         </button>
                     </div>
