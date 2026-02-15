@@ -94,9 +94,9 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
 
     return (
         <div className="bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all animate-fade-in group/item">
-            <div className="p-5 flex gap-4">
-                {/* User Avatar */}
-                <button onClick={() => onNavigate(`/u/${user.username}`)} className="flex-shrink-0">
+            <div className="p-5 flex gap-4 items-start">
+                {/* User Avatar - Adjusted upward with -mt-0.5 to align with the first line of text baseline */}
+                <button onClick={() => onNavigate(`/u/${user.username}`)} className="flex-shrink-0 -mt-0.5">
                     <div className="relative">
                         <Avatar src={user.avatar_url} alt={user.name} size="md" className="ring-2 ring-transparent group-hover/item:ring-brand-primary/30 transition-all" />
                         <div className={`absolute -bottom-1 -right-1 p-1 rounded-full ${config.bg} text-white ring-2 ring-white dark:ring-[#121212] shadow-sm`}>
