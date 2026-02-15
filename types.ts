@@ -10,8 +10,6 @@ export interface ListItem {
   added_at: string;
   media_type?: 'movie' | 'tv' | 'person' | 'season' | 'user';
   is_favorite?: boolean;
-  
-  // Denormalized Data for Instant Loading
   title?: string;
   poster_path?: string;
   backdrop_path?: string;
@@ -32,12 +30,13 @@ export interface UserActivity {
     progress?: number;
     prev_progress?: number;
     rating?: number;
-    episode_range?: string; // For aggregated items
+    episode_range?: string;
   };
   likes: number;
   replies: number;
   created_at: string;
-  user?: User; // Joined profile
+  user?: User;
+  is_liked?: boolean; // Track if the current user liked it
 }
 
 export interface EpisodeActivity {
@@ -112,36 +111,29 @@ export interface Show {
   year: number;
   promo_video_url?: string;
   gallery_urls?: string[];
-  participants?: User[]; // App users watching this
+  participants?: User[];
   media_type?: 'movie' | 'tv' | 'person' | 'season' | 'user';
-  provider?: 'tmdb' | 'anilist'; // Source of the data
+  provider?: 'tmdb' | 'anilist';
   is_anime?: boolean;
   is_manga?: boolean;
-  is_staff?: boolean; // New flag for AniList Staff
-  format?: string; // e.g. TV, OVA, MOVIE, SPECIAL
-  
-  // New fields for TMDB details
+  is_staff?: boolean;
+  format?: string;
   cast?: CastMember[];
-  creators?: string[]; // Directors for movies, Creators for TV
+  creators?: string[];
   creator_persons?: { id: number; name: string }[];
-  
-  // Anime Specific
   anime_characters?: Character[];
   relations?: Show[];
-
-  // New fields for Seasons and Collections
   seasons?: Season[];
   episodes?: Episode[];
   collection?: Show[];
   collection_name?: string;
   collection_id?: number;
-  // Extended Details
   external_ids?: ExternalIds;
   number_of_episodes?: number;
   number_of_seasons?: number;
   chapters?: number;
   volumes?: number;
-  runtime?: number; // minutes
+  runtime?: number;
   original_language?: string;
   origin_country?: string[];
   production_companies?: Network[];
@@ -150,31 +142,25 @@ export interface Show {
   homepage?: string;
   budget?: number;
   revenue?: number;
-  // Additional fields for Sidebar
   last_air_date?: string;
-  next_episode_to_air?: Episode; // New field for countdown
-  last_episode_to_air?: Episode; // New field for checking recently aired finale
+  next_episode_to_air?: Episode;
+  last_episode_to_air?: Episode;
   popularity?: number;
   vote_count?: number;
   original_name?: string;
-  
-  // Fields for Season type
   parent_show_id?: number;
   parent_show_title?: string;
   season_number?: number;
-  // UI State
   is_favorite?: boolean;
-  
-  // For User Search
   username?: string;
 }
 
 export interface User {
-  id: string; // maps to Supabase auth user id
+  id: string;
   username: string;
-  name: string; // Display Name (Public)
-  first_name?: string; // Real First Name (Private-ish)
-  last_name?: string; // Real Last Name (Private-ish)
+  name: string;
+  first_name?: string;
+  last_name?: string;
   email: string;
   country?: string;
   avatar_url: string;
@@ -198,7 +184,7 @@ export interface User {
 
 export interface Comment {
   id: number;
-  user: User; // Joined profile data
+  user: User;
   user_id: string;
   text: string;
   created_at: string;
@@ -227,7 +213,6 @@ export interface Subscription {
   created_at: string;
 }
 
-// Tier List Builder UI Types
 export interface TierBuilderItem {
   id: string;
   contentId: number;
@@ -243,20 +228,19 @@ export interface TierRow {
   items: TierBuilderItem[];
 }
 
-// Tier List Interfaces (DB)
 export interface TierList {
   id: string;
   user_id: string;
   title: string;
   slug?: string;
   description?: string;
-  vibe?: string; // e.g., "Nostalgia", "Critical", "Just Vibes"
+  vibe?: string;
   created_at: string;
   likes_count: number;
-  content: TierRow[]; // Replaces tiers: Tier[] to match JSONB structure
+  content: TierRow[];
   thumbnail_images?: string[];
-  user?: User; // Creator
-  profiles?: any; // For legacy/raw access if needed
+  user?: User;
+  profiles?: any;
 }
 
 export interface TierItem {
@@ -265,8 +249,7 @@ export interface TierItem {
   tmdb_id: number;
   media_type: 'movie' | 'tv' | 'anime' | 'manga';
   rank_order: number;
-  comment?: string; // "Opinion Layer"
-  tags?: string[]; // e.g. ["Overrated", "Classic"]
-  // Hydrated data
+  comment?: string;
+  tags?: string[];
   show?: Show;
 }
