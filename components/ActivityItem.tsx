@@ -57,9 +57,24 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
     const config = getStatusConfig();
     const StatusIcon = config.icon;
 
+    const handleMediaClick = () => {
+        if (metadata.title) {
+            const slug = slugify(metadata.title);
+            const prefix = activity.media_type === 'movie' ? '/movie/' : '/tv/';
+            onNavigate(`${prefix}${slug}`);
+        }
+    };
+
     const renderActionText = () => {
         const title = metadata.title || 'Unknown Title';
-        const titleSpan = <span className="font-bold text-gray-900 dark:text-white group-hover:underline">"{title}"</span>;
+        const titleSpan = (
+            <button 
+                onClick={handleMediaClick}
+                className="font-bold text-gray-900 dark:text-white hover:text-brand-primary transition-colors text-start"
+            >
+                {title}
+            </button>
+        );
         
         switch (action) {
             case 'added_to_list':
@@ -81,14 +96,6 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                 return null;
             default:
                 return null;
-        }
-    };
-
-    const handleMediaClick = () => {
-        if (metadata.title) {
-            const slug = slugify(metadata.title);
-            const prefix = activity.media_type === 'movie' ? '/movie/' : '/tv/';
-            onNavigate(`${prefix}${slug}`);
         }
     };
 
@@ -144,7 +151,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                                     <img 
                                         src={`https://image.tmdb.org/t/p/w200${metadata.image}`} 
                                         alt={metadata.title} 
-                                        className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-500"
+                                        className="w-full h-full object-cover group-hover:media:scale-105 transition-transform duration-500"
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-bold uppercase">No Image</div>
