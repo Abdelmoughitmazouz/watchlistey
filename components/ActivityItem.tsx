@@ -106,64 +106,77 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                 </button>
 
                 <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start gap-4">
-                        <div className="flex-1 min-w-0">
-                            {/* Header */}
-                            <div className="flex items-center gap-2 mb-1.5">
-                                <button 
-                                    onClick={() => onNavigate(`/u/${user.username}`)}
-                                    className="font-bold text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate"
-                                >
-                                    {user.name}
-                                </button>
-                                <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
-                                    • {timeAgo(created_at)}
-                                </span>
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={() => onNavigate(`/u/${user.username}`)}
+                                className="font-bold text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate"
+                            >
+                                {user.name}
+                            </button>
+                            <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                                {timeAgo(created_at)}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Action Description */}
+                    <div className="text-sm text-gray-600 dark:text-gray-400 leading-snug">
+                        {renderActionText()}
+                    </div>
+
+                    {/* Post Content (for manual posts) */}
+                    {action === 'post' && content && (
+                        <p className="text-[15px] text-gray-800 dark:text-gray-200 mt-2.5 whitespace-pre-wrap leading-relaxed">
+                            {content}
+                        </p>
+                    )}
+
+                    {/* Media Attachment Card */}
+                    {metadata.title && (
+                        <div 
+                            onClick={handleMediaClick}
+                            className="mt-4 flex gap-4 p-4 bg-gray-50/50 dark:bg-[#1a1a1a]/50 rounded-xl border border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-100/80 dark:hover:bg-[#222] transition-all group/media"
+                        >
+                            <div className="w-16 h-24 bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0 shadow-sm relative">
+                                {metadata.image ? (
+                                    <img 
+                                        src={`https://image.tmdb.org/t/p/w200${metadata.image}`} 
+                                        alt={metadata.title} 
+                                        className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-500"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 font-bold uppercase">No Image</div>
+                                )}
                             </div>
-
-                            {/* Action Description */}
-                            <div className="text-sm text-gray-600 dark:text-gray-400 leading-snug">
-                                {renderActionText()}
-                            </div>
-
-                            {/* Post Content (for manual posts) */}
-                            {action === 'post' && content && (
-                                <p className="text-[15px] text-gray-800 dark:text-gray-200 mt-2.5 whitespace-pre-wrap leading-relaxed">
-                                    {content}
-                                </p>
-                            )}
-
-                            {/* Show Details (Title/Rating) - Minimalist display since image is now top-right */}
-                            {metadata.title && (
-                                <div className="mt-3 flex items-center gap-3">
-                                    {metadata.rating && metadata.rating > 0 && (
-                                        <div className="flex items-center gap-1 text-xs font-bold text-yellow-600 dark:text-brand-primary">
-                                            <StarIcon className="w-3 h-3" />
-                                            <span>{metadata.rating.toFixed(1)}</span>
+                            <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h4 className="text-base font-extrabold text-gray-900 dark:text-white truncate group-hover/media:text-brand-primary transition-colors">
+                                            {metadata.title}
+                                        </h4>
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-tighter">
+                                            {activity.media_type}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        {metadata.rating && metadata.rating > 0 && (
+                                            <div className="flex items-center gap-1 text-xs font-bold text-yellow-600 dark:text-brand-primary">
+                                                <StarIcon className="w-3 h-3" />
+                                                <span>{metadata.rating.toFixed(1)}</span>
+                                            </div>
+                                        )}
+                                        <div className={`flex items-center gap-1 text-xs font-bold ${config.color}`}>
+                                            <StatusIcon className="w-3.5 h-3.5" />
+                                            <span>{config.label}</span>
                                         </div>
-                                    )}
-                                    <div className={`flex items-center gap-1 text-xs font-bold ${config.color}`}>
-                                        <StatusIcon className="w-3.5 h-3.5" />
-                                        <span>{config.label}</span>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Thumbnail Image - Moved Upwards to same line as Name */}
-                        {metadata.image && (
-                            <div 
-                                onClick={handleMediaClick}
-                                className="w-14 h-20 sm:w-16 sm:h-24 bg-gray-200 dark:bg-gray-800 rounded-xl overflow-hidden flex-shrink-0 shadow-sm relative cursor-pointer hover:ring-2 hover:ring-brand-primary/50 transition-all group/media"
-                            >
-                                <img 
-                                    src={`https://image.tmdb.org/t/p/w200${metadata.image}`} 
-                                    alt={metadata.title} 
-                                    className="w-full h-full object-cover group-hover/media:scale-110 transition-transform duration-500"
-                                />
+                                <p className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Click to view details</p>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* Social Footer */}
                     <div className="mt-5 flex items-center gap-7">
