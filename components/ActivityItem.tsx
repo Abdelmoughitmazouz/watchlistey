@@ -127,16 +127,6 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                 {/* Nested Media Card (Mockup Style) */}
                 {metadata.title && (
                     <div className="relative flex gap-4">
-                        {/* Status Side Avatar (Optional visual flourish from your reference) */}
-                        <div className="hidden sm:flex flex-col items-center justify-center -ml-2 mr-2">
-                            <div className="relative">
-                                <Avatar src={user.avatar_url} alt={user.name} size="sm" className="ring-2 ring-brand-primary/20 border border-gray-900" />
-                                <div className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-emerald-500 text-white ring-2 ring-[#121212]">
-                                    <EyeIcon className="w-2.5 h-2.5" />
-                                </div>
-                            </div>
-                        </div>
-
                         <div 
                             onClick={handleMediaClick}
                             className="flex-1 flex gap-5 p-5 bg-[#0a0a0a] rounded-[20px] border border-gray-800/80 cursor-pointer hover:border-gray-700 transition-all group/media"
