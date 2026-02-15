@@ -4,8 +4,7 @@ import { UserActivity } from '../types';
 import { Avatar } from './Avatar';
 import { 
     HeartIcon, CommentIcon, ShareIcon, WatchingIcon, CompletedIcon, 
-    PlanningIcon, PausedIcon, DroppedIcon, RewatchingIcon, StarIcon,
-    ChevronRightIcon
+    PlanningIcon, PausedIcon, DroppedIcon, RewatchingIcon, StarIcon 
 } from '../constants';
 import { slugify } from '../lib/tmdb';
 
@@ -13,14 +12,6 @@ interface ActivityItemProps {
     activity: UserActivity;
     onNavigate: (path: string) => void;
 }
-
-// Simple clock icon for the "Planning" status in the card
-const ClockIcon = ({ className }: { className?: string }) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className || "w-4 h-4"}>
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
-    </svg>
-);
 
 const timeAgo = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -64,10 +55,11 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
     };
 
     const config = getStatusConfig();
+    const StatusIcon = config.icon;
 
     const renderActionText = () => {
         const title = metadata.title || 'Unknown Title';
-        const titleSpan = <span className="font-bold text-gray-900 dark:text-white group-hover:underline">"{title}"</span>;
+        const titleSpan = <span className="font-bold text-gray-900 dark:text-white group-hover:underline">{title}</span>;
         
         switch (action) {
             case 'added_to_list':
@@ -92,8 +84,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
         }
     };
 
-    const handleMediaClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleMediaClick = () => {
         if (metadata.title) {
             const slug = slugify(metadata.title);
             const prefix = activity.media_type === 'movie' ? '/movie/' : '/tv/';
@@ -102,107 +93,109 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
     };
 
     return (
-        <div className="bg-white dark:bg-[#121212] border border-gray-100 dark:border-gray-800 rounded-[28px] overflow-hidden shadow-sm hover:shadow-md transition-all animate-fade-in group/item mb-6">
-            <div className="p-6 flex flex-col gap-5">
-                {/* Header: User Info - Full Width to fill space */}
-                <div className="flex items-center gap-4">
-                    <button onClick={() => onNavigate(`/u/${user.username}`)} className="flex-shrink-0 relative">
-                        <Avatar src={user.avatar_url} alt={user.name} size="md" className="ring-2 ring-transparent group-hover/item:ring-brand-primary/30 transition-all border border-gray-100 dark:border-gray-800" />
+        <div className="bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all animate-fade-in group/item">
+            <div className="p-5 flex gap-4 items-start">
+                {/* User Avatar - Adjusted upward with -mt-0.5 to align with the first line of text baseline */}
+                <button onClick={() => onNavigate(`/u/${user.username}`)} className="flex-shrink-0 -mt-0.5">
+                    <div className="relative">
+                        <Avatar src={user.avatar_url} alt={user.name} size="md" className="ring-2 ring-transparent group-hover/item:ring-brand-primary/30 transition-all" />
                         <div className={`absolute -bottom-1 -right-1 p-1 rounded-full ${config.bg} text-white ring-2 ring-white dark:ring-[#121212] shadow-sm`}>
-                            <div className="size-2.5 flex items-center justify-center">
-                                <ClockIcon className="size-2.5" />
-                            </div>
+                            <StatusIcon className="w-2.5 h-2.5" />
                         </div>
-                    </button>
-                    <div className="flex-1 min-w-0">
+                    </div>
+                </button>
+
+                <div className="flex-1 min-w-0">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
                             <button 
                                 onClick={() => onNavigate(`/u/${user.username}`)}
-                                className="font-bold text-lg text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate"
+                                className="font-bold text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate"
                             >
                                 {user.name}
                             </button>
-                            <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap mt-0.5">
+                            <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
                                 {timeAgo(created_at)}
                             </span>
                         </div>
-                        {/* Action Text - Directly below name in the header area if concise, or part of content */}
-                        <div className="text-[15px] text-gray-500 dark:text-gray-400 font-medium">
-                            {renderActionText()}
-                        </div>
                     </div>
-                </div>
 
-                {/* Body Content */}
-                <div className="space-y-4">
-                    {/* Post Content */}
+                    {/* Action Description */}
+                    <div className="text-sm text-gray-600 dark:text-gray-400 leading-snug">
+                        {renderActionText()}
+                    </div>
+
+                    {/* Post Content (for manual posts) */}
                     {action === 'post' && content && (
-                        <p className="text-[16px] text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed px-1">
+                        <p className="text-[15px] text-gray-800 dark:text-gray-200 mt-2.5 whitespace-pre-wrap leading-relaxed">
                             {content}
                         </p>
                     )}
 
-                    {/* Media Attachment Card - Styled like the image */}
+                    {/* Media Attachment Card */}
                     {metadata.title && (
                         <div 
                             onClick={handleMediaClick}
-                            className="flex gap-6 p-6 bg-gray-50/40 dark:bg-[#1a1a1a]/40 rounded-[20px] border border-gray-100/50 dark:border-gray-800/50 cursor-pointer hover:bg-gray-50/80 dark:hover:bg-[#1e1e1e] transition-all group/media relative"
+                            className="mt-4 flex gap-4 p-4 bg-gray-50/50 dark:bg-[#1a1a1a]/50 rounded-xl border border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-100/80 dark:hover:bg-[#222] transition-all group/media"
                         >
-                            <div className="w-[85px] h-[120px] bg-gray-200 dark:bg-gray-800 rounded-xl overflow-hidden flex-shrink-0 shadow-md ring-1 ring-black/5">
+                            <div className="w-16 h-24 bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0 shadow-sm relative">
                                 {metadata.image ? (
                                     <img 
-                                        src={`https://image.tmdb.org/t/p/w300${metadata.image}`} 
+                                        src={`https://image.tmdb.org/t/p/w200${metadata.image}`} 
                                         alt={metadata.title} 
-                                        className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-700"
+                                        className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-500"
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-bold uppercase">No Poster</div>
+                                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 font-bold uppercase">No Image</div>
                                 )}
                             </div>
-                            
-                            <div className="flex-1 min-w-0 py-1 flex flex-col">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <h4 className="text-xl font-bold text-gray-900 dark:text-white truncate group-hover/media:text-brand-primary transition-colors">
-                                        "{metadata.title}"
-                                    </h4>
-                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        {activity.media_type === 'movie' ? 'MOVIE' : 'TV'}
-                                    </span>
+                            <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h4 className="text-base font-extrabold text-gray-900 dark:text-white truncate group-hover/media:text-brand-primary transition-colors">
+                                            {metadata.title}
+                                        </h4>
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-tighter">
+                                            {activity.media_type}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        {metadata.rating && metadata.rating > 0 && (
+                                            <div className="flex items-center gap-1 text-xs font-bold text-yellow-600 dark:text-brand-primary">
+                                                <StarIcon className="w-3 h-3" />
+                                                <span>{metadata.rating.toFixed(1)}</span>
+                                            </div>
+                                        )}
+                                        <div className={`flex items-center gap-1 text-xs font-bold ${config.color}`}>
+                                            <StatusIcon className="w-3.5 h-3.5" />
+                                            <span>{config.label}</span>
+                                        </div>
+                                    </div>
                                 </div>
-
-                                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-auto">
-                                    <ClockIcon className="w-4 h-4" />
-                                    <span className="text-sm font-semibold">{config.label}</span>
-                                </div>
-
-                                <div className="mt-4 flex items-center gap-1.5 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.05em]">
-                                    <span>CLICK TO VIEW DETAILS</span>
-                                </div>
+                                <p className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Click to view details</p>
                             </div>
                         </div>
                     )}
-                </div>
 
-                {/* Social Footer - Fills space horizontally */}
-                <div className="flex items-center justify-between mt-2 px-1">
-                    <div className="flex items-center gap-8">
-                        <button className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-red-500 transition-all group/stat">
-                            <div className="p-2 rounded-full bg-gray-100 dark:bg-[#1a1a1a] group-hover/stat:bg-red-50 dark:group-hover/stat:bg-red-900/20 transition-colors">
-                                <HeartIcon className="w-5 h-5" />
+                    {/* Social Footer */}
+                    <div className="mt-5 flex items-center gap-7">
+                        <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-red-500 transition-all transform active:scale-90">
+                            <div className="p-1.5 rounded-full bg-gray-50 dark:bg-[#1a1a1a] group-hover/item:bg-gray-100 dark:group-hover/item:bg-[#252525]">
+                                <HeartIcon className="w-4 h-4" />
                             </div>
-                            <span className="tabular-nums">{activity.likes || 0}</span>
+                            <span>{activity.likes || 0}</span>
                         </button>
-                        <button className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-blue-500 transition-all group/stat">
-                            <div className="p-2 rounded-full bg-gray-100 dark:bg-[#1a1a1a] group-hover/stat:bg-blue-50 dark:group-hover/stat:bg-blue-900/20 transition-colors">
-                                <CommentIcon className="w-5 h-5" />
+                        <button className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-blue-500 transition-all transform active:scale-90">
+                            <div className="p-1.5 rounded-full bg-gray-50 dark:bg-[#1a1a1a] group-hover/item:bg-gray-100 dark:group-hover/item:bg-[#252525]">
+                                <CommentIcon className="w-4 h-4" />
                             </div>
-                            <span className="tabular-nums">{activity.replies || 0}</span>
+                            <span>{activity.replies || 0}</span>
+                        </button>
+                        <button className="ml-auto p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] transition-all">
+                            <ShareIcon className="w-4 h-4" />
                         </button>
                     </div>
-                    
-                    <button className="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] transition-all">
-                        <ShareIcon className="w-5 h-5" />
-                    </button>
                 </div>
             </div>
         </div>
