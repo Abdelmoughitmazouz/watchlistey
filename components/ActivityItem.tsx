@@ -3,7 +3,7 @@ import { UserActivity } from '../types';
 import { Avatar } from './Avatar';
 import { 
     HeartIcon, CommentIcon, ShareIcon, WatchingIcon, CompletedIcon, 
-    PlanningIcon, PausedIcon, DroppedIcon, RewatchingIcon, StarIcon, EyeIcon
+    PlanningIcon, PausedIcon, DroppedIcon, RewatchingIcon, EyeIcon
 } from '../constants';
 import { slugify } from '../lib/tmdb';
 
@@ -57,7 +57,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
 
     const renderActionText = () => {
         const title = metadata.title || 'Unknown Title';
-        const titleSpan = <span className="font-bold text-gray-100 group-hover:underline">“{title}”</span>;
+        const titleSpan = <span className="font-bold text-gray-100 group-hover:underline">{title}</span>;
         
         switch (action) {
             case 'added_to_list':
@@ -92,7 +92,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
     };
 
     return (
-        <div className="bg-[#121212] border border-gray-800/60 rounded-[28px] overflow-hidden shadow-lg transition-all animate-fade-in group/item mb-4">
+        <div className="bg-[#0f0f0f] border border-gray-800/60 rounded-[32px] overflow-hidden shadow-lg transition-all animate-fade-in group/item mb-4">
             <div className="p-6">
                 {/* Header: Avatar, Name, Time */}
                 <div className="flex items-start gap-4 mb-4">
@@ -129,10 +129,10 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                     <div className="relative flex gap-4">
                         <div 
                             onClick={handleMediaClick}
-                            className="flex-1 flex gap-5 p-5 bg-[#0a0a0a] rounded-[20px] border border-gray-800/80 cursor-pointer hover:border-gray-700 transition-all group/media"
+                            className="flex-1 flex gap-5 p-5 bg-[#050505] rounded-[24px] border border-gray-800/80 cursor-pointer hover:border-gray-700 transition-all group/media"
                         >
                             {/* Media Poster */}
-                            <div className="w-20 h-28 bg-gray-900 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
+                            <div className="w-20 h-28 bg-gray-900 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
                                 {metadata.image ? (
                                     <img 
                                         src={`https://image.tmdb.org/t/p/w200${metadata.image}`} 
@@ -145,27 +145,19 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                             </div>
 
                             {/* Media Info */}
-                            <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                        <h4 className="text-xl font-bold text-white truncate group-hover/media:text-brand-primary transition-colors">
-                                            “{metadata.title}”
-                                        </h4>
-                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-800 text-gray-400 uppercase tracking-widest">
-                                            {activity.media_type === 'movie' ? 'Movie' : 'Series'}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-2 text-emerald-500 font-bold text-sm">
-                                        <EyeIcon className="w-4 h-4" />
-                                        <span>{config.label}</span>
-                                    </div>
+                            <div className="flex-1 min-w-0 py-1 flex flex-col justify-center">
+                                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                    <h4 className="text-xl font-bold text-white truncate group-hover/media:text-brand-primary transition-colors">
+                                        {metadata.title}
+                                    </h4>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-800 text-gray-400 uppercase tracking-widest">
+                                        {activity.media_type === 'movie' ? 'Movie' : 'Series'}
+                                    </span>
                                 </div>
                                 
-                                <div className="mt-4">
-                                    <p className="text-[10px] text-gray-500 font-bold tracking-[0.1em] uppercase group-hover/media:text-gray-300 transition-colors">
-                                        Click to view details
-                                    </p>
+                                <div className="flex items-center gap-2 text-emerald-500 font-bold text-sm">
+                                    <EyeIcon className="w-4 h-4" />
+                                    <span>{config.label}</span>
                                 </div>
                             </div>
                         </div>
