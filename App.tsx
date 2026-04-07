@@ -228,7 +228,8 @@ const App = () => {
                         status: status, 
                         media_type: dbMediaType, 
                         updated_at: new Date().toISOString(),
-                        ...extraData
+                        ...extraData,
+                        rating: extraData?.rating !== undefined ? Math.round(extraData.rating) : undefined
                      };
                      if (customAddedAt) payload.added_at = customAddedAt;
                      if (show) { 

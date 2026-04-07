@@ -409,7 +409,7 @@ create table public.list_items (
   user_id uuid not null,
   show_id bigint not null,
   status character varying(50) not null,
-  rating integer null,
+  rating numeric null,
   progress integer null default 0,
   notes text null,
   start_date timestamp with time zone null,
