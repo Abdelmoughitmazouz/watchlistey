@@ -13,7 +13,7 @@ interface MyListPageProps {
     userFavorites?: Record<number, ListItem>;
     shows: Show[];
     onNavigate: (path: string) => void;
-    handleUpdateListStatus: (showId: number, status: ListStatus | null, show?: Show) => void;
+    handleUpdateListStatus: (showId: number, status: ListStatus | null, show?: Show, customAddedAt?: string, extraData?: Partial<ListItem>) => void;
     handleToggleFavorite?: (show: Show) => void;
 }
 

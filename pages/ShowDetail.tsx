@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Show, User, ListStatus, ListItem, CastMember, Episode, AppNotification, Subscription } from '../types';
-import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, StarIcon, ArrowRightIcon, XIcon, FacebookIconV2, InstagramIcon, LinkIcon, UserPlaceholderIcon, CaretDownIcon, CalendarIcon } from '../constants';
+import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, StarIcon, ArrowRightIcon, XIcon, FacebookIconV2, InstagramIcon, LinkIcon, UserPlaceholderIcon, CaretDownIcon, CalendarIcon, SettingsIconV2 } from '../constants';
 import ContentCarousel from '../components/ContentCarousel';
 import PromoVideo from '../components/PromoVideo';
 import ImageSlider from '../components/ImageSlider';
@@ -8,6 +8,7 @@ import CommentsSection from '../components/CommentsSection';
 import AIAnalysis from '../components/AIAnalysis'; // Import new component
 import { Avatar } from '../components/Avatar';
 import ListStatusButton from '../components/ListStatusButton';
+import ShowEditorModal from '../components/ShowEditorModal';
 import { getGenreId, slugify, getRecommendations, getShowDetails, getSeasonDetails } from '../lib/tmdb';
 import { useSEO } from '../hooks/useSEO';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
@@ -24,7 +25,7 @@ interface ShowDetailProps {
     userList: Record<number, ListItem>;
     userFavorites?: Record<number, ListItem>;
     userCharacters?: Record<number, ListItem>;
-    handleUpdateListStatus: (showId: number, status: ListStatus | null, show?: Show) => void;
+    handleUpdateListStatus: (showId: number, status: ListStatus | null, show?: Show, customAddedAt?: string, extraData?: Partial<ListItem>) => void;
     currentUser?: User;
     handleToggleFavorite?: (show: Show) => void;
     onRegisterNotification?: (showId: number) => void;
@@ -39,6 +40,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
     const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
     const [seasonEpisodes, setSeasonEpisodes] = useState<Episode[]>([]);
     const [loadingEpisodes, setLoadingEpisodes] = useState(false);
+    const [isEditorOpen, setIsEditorOpen] = useState(false);
 
     useEffect(() => {
         setShow(initialShow);
@@ -450,6 +452,15 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                             <div className="flex-grow">
                                 <ListStatusButton showId={show.id} userList={userList} handleUpdateListStatus={handleUpdateListStatus} fullWidth show={show} />
                             </div>
+                            {currentUser && (
+                                <button 
+                                    onClick={() => setIsEditorOpen(true)}
+                                    className="h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-lg border bg-gray-100 dark:bg-[#1e1e1e] border-gray-300 dark:border-gray-700 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-[#2a2a2a] transition-all shadow-sm"
+                                    title="Edit Watch Status"
+                                >
+                                    <SettingsIconV2 className="h-5 w-5" />
+                                </button>
+                            )}
                             {handleToggleFavorite && (
                                 <button 
                                     onClick={() => handleToggleFavorite(show)}
@@ -806,6 +817,23 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                     <CommentsSection showId={show.id} onViewUser={handleViewUser} currentUser={currentUser} />
                 </div>
             </div>
+            {isEditorOpen && (
+                <ShowEditorModal 
+                    isOpen={isEditorOpen}
+                    onClose={() => setIsEditorOpen(false)}
+                    show={show}
+                    listItem={userList[show.id]}
+                    onSave={async (data) => {
+                        await handleUpdateListStatus(show.id, data.status || 'Planning', show, undefined, data);
+                    }}
+                    onDelete={async () => {
+                        await handleUpdateListStatus(show.id, null, show);
+                        setIsEditorOpen(false);
+                    }}
+                    isFavorite={isFavorite}
+                    onToggleFavorite={() => handleToggleFavorite?.(show)}
+                />
+            )}
         </div>
     );
 };

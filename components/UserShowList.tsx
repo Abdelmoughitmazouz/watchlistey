@@ -20,7 +20,7 @@ interface UserShowListProps {
     viewerFavorites?: Record<number, ListItem>;
     shows: Show[];
     onNavigate: (path: string, state?: Show) => void;
-    handleUpdateListStatus?: (showId: number, status: ListStatus | null, show?: Show) => void;
+    handleUpdateListStatus?: (showId: number, status: ListStatus | null, show?: Show, customAddedAt?: string, extraData?: Partial<ListItem>) => void;
     handleToggleFavorite?: (show: Show) => void;
     layout?: 'horizontal' | 'sidebar'; // Support sidebar layout
     defaultTab?: string;

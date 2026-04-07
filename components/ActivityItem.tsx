@@ -149,8 +149,10 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
             case 'added_to_list': return <>Added {titleSpan} to their watchlist</>;
             case 'started_watching': return <>Started watching {titleSpan}</>;
             case 'progress_updated':
-                const range = metadata.episode_range || `episode ${metadata.progress}`;
-                return <>Watched <span className="font-bold text-white">{range}</span> of {titleSpan}</>;
+                const range = metadata.episode_range || `${metadata.progress}`;
+                const isPlural = range.includes('-') || parseInt(range) > 1;
+                const epTitle = metadata.episode_title ? ` "${metadata.episode_title}"` : '';
+                return <>Watched {isPlural ? 'episodes' : 'episode'} <span className="font-bold text-white">{range}{epTitle}</span> of {titleSpan}</>;
             case 'completed': return <>Completed {titleSpan}</>;
             case 'dropped': return <>Dropped {titleSpan}</>;
             case 'paused_watching': return <>Paused {titleSpan}</>;
@@ -166,8 +168,10 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
             case 'added_to_list': return <>Added {titleSpan} to their watchlist</>;
             case 'started_watching': return <>Started watching {titleSpan}</>;
             case 'progress_updated':
-                const range = metadata.episode_range || `episode ${metadata.progress}`;
-                return <>Watched <span className="font-bold text-gray-900 dark:text-white">{range}</span> of {titleSpan}</>;
+                const range = metadata.episode_range || `${metadata.progress}`;
+                const isPlural = range.includes('-') || parseInt(range) > 1;
+                const epTitle = metadata.episode_title ? ` "${metadata.episode_title}"` : '';
+                return <>Watched {isPlural ? 'episodes' : 'episode'} <span className="font-bold text-gray-900 dark:text-white">{range}{epTitle}</span> of {titleSpan}</>;
             case 'completed': return <>Completed {titleSpan}</>;
             case 'dropped': return <>Dropped {titleSpan}</>;
             case 'paused_watching': return <>Paused {titleSpan}</>;
@@ -301,12 +305,13 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                             onClick={handleMediaClick} 
                             className="flex gap-4 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 transition-all group/media relative overflow-hidden"
                         >
-                            <div className="w-16 sm:w-20 h-24 sm:h-28 bg-gray-200 dark:bg-gray-800 rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
-                                {metadata.image ? (
+                            <div className={`${metadata.episode_image ? 'w-32 sm:w-40 h-20 sm:h-24' : 'w-16 sm:w-20 h-24 sm:h-28'} bg-gray-200 dark:bg-gray-800 rounded-xl overflow-hidden flex-shrink-0 shadow-sm`}>
+                                {metadata.episode_image || metadata.image ? (
                                     <img 
-                                        src={`https://image.tmdb.org/t/p/w200${metadata.image}`} 
-                                        alt={metadata.title} 
+                                        src={`https://image.tmdb.org/t/p/w${metadata.episode_image ? '500' : '200'}${metadata.episode_image || metadata.image}`} 
+                                        alt={metadata.episode_title || metadata.title} 
                                         className="w-full h-full object-cover group-hover/media:scale-110 transition-transform duration-700" 
+                                        referrerPolicy="no-referrer"
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-bold uppercase">No Image</div>
@@ -314,9 +319,18 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                             </div>
                             <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
                                 <div>
+                                    {metadata.episode_title && (
+                                        <div className="text-[10px] font-black text-brand-primary uppercase tracking-widest mb-0.5 truncate">
+                                            {metadata.title}
+                                        </div>
+                                    )}
                                     <div className="flex items-center gap-2 mb-1">
-                                        <h4 className="text-base font-black text-gray-900 dark:text-white truncate group-hover/media:text-brand-primary transition-colors tracking-tight">{metadata.title}</h4>
-                                        <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary uppercase tracking-widest">{activity.media_type === 'tv' ? 'Series' : 'Movie'}</span>
+                                        <h4 className="text-base font-black text-gray-900 dark:text-white truncate group-hover/media:text-brand-primary transition-colors tracking-tight">
+                                            {metadata.episode_title || metadata.title}
+                                        </h4>
+                                        {!metadata.episode_title && (
+                                            <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary uppercase tracking-widest">{activity.media_type === 'tv' ? 'Series' : 'Movie'}</span>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-4">
                                         {metadata.rating && metadata.rating > 0 && (
@@ -463,17 +477,24 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, onNavigate }) => 
                             
                             {metadata.title && (
                                 <div className="flex gap-8 p-6 bg-white/5 rounded-3xl border border-white/5">
-                                    <div className="w-32 h-48 bg-gray-800 rounded-2xl overflow-hidden flex-shrink-0 shadow-lg">
-                                        {metadata.image ? (
-                                            <img crossOrigin="anonymous" src={`https://image.tmdb.org/t/p/w500${metadata.image}`} alt={metadata.title} className="w-full h-full object-cover" />
+                                    <div className={`${metadata.episode_image ? 'w-64 h-36' : 'w-32 h-48'} bg-gray-800 rounded-2xl overflow-hidden flex-shrink-0 shadow-lg`}>
+                                        {metadata.episode_image || metadata.image ? (
+                                            <img crossOrigin="anonymous" src={`https://image.tmdb.org/t/p/w500${metadata.episode_image || metadata.image}`} alt={metadata.episode_title || metadata.title} className="w-full h-full object-cover" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-sm text-gray-400 font-bold uppercase">No Image</div>
                                         )}
                                     </div>
                                     <div className="flex-1 min-w-0 py-2 flex flex-col justify-center">
+                                        {metadata.episode_title && (
+                                            <div className="text-sm font-black text-brand-primary uppercase tracking-widest mb-2 truncate">
+                                                {metadata.title}
+                                            </div>
+                                        )}
                                         <div className="flex items-center gap-3 mb-3">
-                                            <h4 className="text-3xl font-black text-white truncate tracking-tight">{metadata.title}</h4>
-                                            <span className="text-sm font-black px-3 py-1 rounded-full bg-brand-primary/10 text-brand-primary uppercase tracking-widest">{activity.media_type === 'tv' ? 'Series' : 'Movie'}</span>
+                                            <h4 className="text-3xl font-black text-white truncate tracking-tight">{metadata.episode_title || metadata.title}</h4>
+                                            {!metadata.episode_title && (
+                                                <span className="text-sm font-black px-3 py-1 rounded-full bg-brand-primary/10 text-brand-primary uppercase tracking-widest">{activity.media_type === 'tv' ? 'Series' : 'Movie'}</span>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-6">
                                             {metadata.rating && metadata.rating > 0 && (

@@ -8,6 +8,12 @@ export interface ListItem {
   progress?: number;
   notes?: string;
   added_at: string;
+  updated_at?: string;
+  start_date?: string;
+  finish_date?: string;
+  rewatch_count?: number;
+  is_private?: boolean;
+  custom_lists?: string[];
   media_type?: 'movie' | 'tv' | 'person' | 'season' | 'user';
   is_favorite?: boolean;
   title?: string;
@@ -31,6 +37,8 @@ export interface UserActivity {
     prev_progress?: number;
     rating?: number;
     episode_range?: string;
+    episode_title?: string;
+    episode_image?: string;
     mediaUrl?: string;
     mediaType?: 'image' | 'youtube' | 'link';
     isSpoiler?: boolean;

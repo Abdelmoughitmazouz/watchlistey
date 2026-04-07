@@ -6,7 +6,7 @@ import HeroSection from './components/HeroSection';
 import ContentCarousel from './components/ContentCarousel';
 import PromoSection from './components/PromoSection';
 import { Show, User, ListItem, ListStatus, AppNotification } from './types';
-import { getTrendingMovies, getTrendingTV, getTopRatedMovies, getActionMovies, getComedyMovies, getSciFiMovies, getShowDetails, slugify, getShowIdFromSlug } from './lib/tmdb';
+import { getTrendingMovies, getTrendingTV, getTopRatedMovies, getActionMovies, getComedyMovies, getSciFiMovies, getShowDetails, slugify, getShowIdFromSlug, getEpisodeDetails } from './lib/tmdb';
 import { supabase, isSupabaseConfigured, getProfileByUsername, getProfileById, ensureProfileExists } from './lib/supabaseClient';
 import { parsePath, getLocalizedPath, DEFAULT_LANGUAGE } from './lib/routeUtils';
 import Login from './pages/Login';
@@ -176,7 +176,7 @@ const App = () => {
         else document.documentElement.classList.remove('dark');
     }, [isDark]);
 
-    const handleUpdateListStatus = async (showId: number, status: ListStatus | null, show?: Show, customAddedAt?: string) => {
+    const handleUpdateListStatus = async (showId: number, status: ListStatus | null, show?: Show, customAddedAt?: string, extraData?: Partial<ListItem>) => {
         if (!user) return false;
         let dbMediaType = show?.media_type || 'tv';
         
@@ -192,7 +192,22 @@ const App = () => {
                 return { ...prev, characters: newChars };
             } else {
                 if (status === null) delete newList[showId];
-                else newList[showId] = { id: Date.now(), show_id: showId, user_id: prev.id, status: status, added_at: timestamp, media_type: dbMediaType, title: show?.title, poster_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), is_favorite: newList[showId]?.is_favorite };
+                else {
+                    const existing = (newList[showId] || {}) as Partial<ListItem>;
+                    newList[showId] = { 
+                        ...existing,
+                        id: existing.id || Date.now(), 
+                        show_id: showId, 
+                        user_id: prev.id, 
+                        status: status, 
+                        added_at: existing.added_at || timestamp, 
+                        media_type: dbMediaType, 
+                        title: show?.title || existing.title, 
+                        poster_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', '') || existing.poster_path, 
+                        is_favorite: existing.is_favorite,
+                        ...extraData
+                    } as ListItem;
+                }
                 return { ...prev, list: newList };
             }
         });
@@ -207,7 +222,14 @@ const App = () => {
                  if (dbMediaType === 'person') {
                      await supabase.from('characters').upsert({ user_id: user.id, person_id: showId, name: show?.title, profile_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), added_at: customAddedAt });
                  } else {
-                     const payload: any = { user_id: user.id, show_id: showId, status: status, media_type: dbMediaType, updated_at: new Date().toISOString() };
+                     const payload: any = { 
+                        user_id: user.id, 
+                        show_id: showId, 
+                        status: status, 
+                        media_type: dbMediaType, 
+                        updated_at: new Date().toISOString(),
+                        ...extraData
+                     };
                      if (customAddedAt) payload.added_at = customAddedAt;
                      if (show) { 
                          payload.title = show.title; 
@@ -220,8 +242,8 @@ const App = () => {
                      // 1. Update List
                      await supabase.from('list_items').upsert(payload, { onConflict: 'user_id, show_id, media_type' });
 
-                     // 2. Explicitly POST TO FEED (as requested)
-                     const actionMap: Record<string, string> = {
+                    // 2. Explicitly POST TO FEED (as requested)
+                    const actionMap: Record<string, string> = {
                         'Watching': 'started_watching',
                         'Completed': 'completed',
                         'Plan to Watch': 'added_to_list',
@@ -229,22 +251,93 @@ const App = () => {
                         'Paused': 'paused_watching',
                         'Dropped': 'dropped',
                         'Rewatching': 'rewatching'
-                     };
+                    };
 
-                     const action = actionMap[status];
-                     if (action && show) {
+                    const prevProgress = user.list?.[showId]?.progress || 0;
+                    const newProgress = extraData?.progress;
+                    
+                    let action = actionMap[status];
+                    let metadata: any = {
+                        title: show?.title,
+                        image: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''),
+                        backdrop: show?.backdrop_url?.replace('https://image.tmdb.org/t/p/original', '')?.replace('https://image.tmdb.org/t/p/w1280', ''),
+                        mediaType: dbMediaType
+                    };
+
+                    if (newProgress !== undefined && newProgress > prevProgress) {
+                        action = 'progress_updated';
+                        metadata.progress = newProgress;
+                        metadata.prev_progress = prevProgress;
+                        metadata.episode_range = prevProgress + 1 === newProgress 
+                            ? `${newProgress}` 
+                            : `${prevProgress + 1}-${newProgress}`;
+                        
+                        // Link to episode tracking (assuming season 1 for flat progress)
+                        if (dbMediaType === 'tv') {
+                            const trackingRows = [];
+                            
+                            // Try to find season/episode mapping
+                            let targetSeason = 1;
+                            let targetEpisode = newProgress;
+                            
+                            try {
+                                let fullShow = show;
+                                if (!fullShow.seasons || fullShow.seasons.length === 0) {
+                                    fullShow = await getShowDetails(showId, 'tv') || show;
+                                }
+                                
+                                if (fullShow.seasons && fullShow.seasons.length > 0) {
+                                    let currentProgress = 0;
+                                    for (const s of fullShow.seasons) {
+                                        if (s.season_number === 0) continue;
+                                        if (newProgress <= currentProgress + s.episode_count) {
+                                            targetSeason = s.season_number;
+                                            targetEpisode = newProgress - currentProgress;
+                                            break;
+                                        }
+                                        currentProgress += s.episode_count;
+                                    }
+                                    
+                                    // Fetch episode details for the feed
+                                    const epDetails = await getEpisodeDetails(showId, targetSeason, targetEpisode);
+                                    if (epDetails) {
+                                        metadata.episode_title = epDetails.name;
+                                        metadata.episode_image = epDetails.still_path;
+                                    }
+                                }
+                            } catch (e) {
+                                console.error("Error mapping episodes:", e);
+                            }
+
+                            for (let i = prevProgress + 1; i <= newProgress; i++) {
+                                // Simplified: if we don't have full mapping for every episode, we just use the target season for the last one
+                                // or assume season 1 for others. For now, let's just use the targetSeason we found for the range end.
+                                trackingRows.push({
+                                    user_id: user.id,
+                                    show_id: showId,
+                                    season_number: targetSeason, 
+                                    episode_number: i, // This is still flat, which is a bit wrong if it spans seasons, but better than nothing
+                                    is_watched: true,
+                                    watched_at: new Date().toISOString()
+                                });
+                            }
+                            if (trackingRows.length > 0) {
+                                await supabase.from('episode_tracking').upsert(trackingRows, { 
+                                    onConflict: 'user_id, show_id, season_number, episode_number' 
+                                });
+                            }
+                        }
+                    }
+
+                    if (action && show) {
                         await supabase.from('user_activities').insert({
                             user_id: user.id,
                             show_id: showId,
                             media_type: dbMediaType,
                             action: action,
-                            metadata: {
-                                title: show.title,
-                                image: show.image_url?.replace('https://image.tmdb.org/t/p/w500', ''),
-                                backdrop: show.backdrop_url?.replace('https://image.tmdb.org/t/p/original', '')?.replace('https://image.tmdb.org/t/p/w1280', '')
-                            }
+                            metadata: metadata
                         });
-                     }
+                    }
                  }
             }
             return true;

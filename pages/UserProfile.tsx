@@ -21,7 +21,7 @@ interface UserProfileProps {
     onNavigate: (path: string) => void;
     shows: Show[];
     currentUser?: User;
-    handleUpdateListStatus?: (showId: number, status: ListStatus | null, show?: Show) => void;
+    handleUpdateListStatus?: (showId: number, status: ListStatus | null, show?: Show, customAddedAt?: string, extraData?: Partial<ListItem>) => void;
     handleToggleFavorite?: (show: Show) => void;
 }
 
