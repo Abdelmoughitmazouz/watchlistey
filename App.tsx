@@ -6,7 +6,7 @@ import HeroSection from './components/HeroSection';
 import ContentCarousel from './components/ContentCarousel';
 import PromoSection from './components/PromoSection';
 import { Show, User, ListItem, ListStatus, AppNotification } from './types';
-import { getTrendingMovies, getTrendingTV, getTopRatedMovies, getActionMovies, getComedyMovies, getSciFiMovies, getShowDetails, slugify, getShowIdFromSlug, getEpisodeDetails } from './lib/tmdb';
+import { getTrendingMovies, getTrendingTV, getTopRatedMovies, getActionMovies, getComedyMovies, getSciFiMovies, getShowDetails, slugify, getShowIdFromSlug, getEpisodeDetails, getSeasonDetails } from './lib/tmdb';
 import { supabase, isSupabaseConfigured, getProfileByUsername, getProfileById, ensureProfileExists } from './lib/supabaseClient';
 import { parsePath, getLocalizedPath, DEFAULT_LANGUAGE } from './lib/routeUtils';
 import Login from './pages/Login';
@@ -255,91 +255,116 @@ const App = () => {
 
                     const prevProgress = user.list?.[showId]?.progress || 0;
                     const newProgress = extraData?.progress;
+                    const today = new Date().toISOString();
                     
-                    let action = actionMap[status];
-                    let metadata: any = {
+                    const baseMetadata: any = {
                         title: show?.title,
                         image: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''),
                         backdrop: show?.backdrop_url?.replace('https://image.tmdb.org/t/p/original', '')?.replace('https://image.tmdb.org/t/p/w1280', ''),
                         mediaType: dbMediaType
                     };
 
-                    if (newProgress !== undefined && newProgress > prevProgress) {
-                        // Only use progress_updated if we're not completing the series
-                        if (status !== 'Completed') {
-                            action = 'progress_updated';
-                        }
-                        metadata.progress = newProgress;
-                        metadata.prev_progress = prevProgress;
-                        metadata.episode_range = prevProgress + 1 === newProgress 
-                            ? `${newProgress}` 
-                            : `${prevProgress + 1}-${newProgress}`;
-                        
-                        // Link to episode tracking (assuming season 1 for flat progress)
-                        if (dbMediaType === 'tv') {
-                            const trackingRows = [];
-                            
-                            // Try to find season/episode mapping
-                            let targetSeason = 1;
-                            let targetEpisode = newProgress;
-                            
-                            try {
-                                let fullShow = show;
-                                if (!fullShow.seasons || fullShow.seasons.length === 0) {
-                                    fullShow = await getShowDetails(showId, 'tv') || show;
-                                }
-                                
-                                if (fullShow.seasons && fullShow.seasons.length > 0) {
+                    const activitiesToInsert: any[] = [];
+
+                    if (dbMediaType === 'tv' && newProgress !== undefined && newProgress > prevProgress) {
+                        // Handle TV Episode progress (Individual activities)
+                        try {
+                            let fullShow = show;
+                            if (!fullShow?.seasons || fullShow.seasons.length === 0) {
+                                fullShow = await getShowDetails(showId, 'tv') || show;
+                            }
+
+                            if (fullShow?.seasons && fullShow.seasons.length > 0) {
+                                const trackingRows = [];
+                                const seasonCache = new Map<number, any>();
+
+                                for (let i = prevProgress + 1; i <= newProgress; i++) {
+                                    // Map flat progress 'i' to season/episode
                                     let currentProgress = 0;
+                                    let targetSeason = 1;
+                                    let targetEpisode = i;
+                                    
                                     for (const s of fullShow.seasons) {
                                         if (s.season_number === 0) continue;
-                                        if (newProgress <= currentProgress + s.episode_count) {
+                                        if (i <= currentProgress + s.episode_count) {
                                             targetSeason = s.season_number;
-                                            targetEpisode = newProgress - currentProgress;
+                                            targetEpisode = i - currentProgress;
                                             break;
                                         }
                                         currentProgress += s.episode_count;
                                     }
-                                    
-                                    // Fetch episode details for the feed
-                                    const epDetails = await getEpisodeDetails(showId, targetSeason, targetEpisode);
-                                    if (epDetails) {
-                                        metadata.episode_title = epDetails.name;
-                                        metadata.episode_image = epDetails.still_path;
-                                    }
-                                }
-                            } catch (e) {
-                                console.error("Error mapping episodes:", e);
-                            }
 
-                            for (let i = prevProgress + 1; i <= newProgress; i++) {
-                                // Simplified: if we don't have full mapping for every episode, we just use the target season for the last one
-                                // or assume season 1 for others. For now, let's just use the targetSeason we found for the range end.
-                                trackingRows.push({
-                                    user_id: user.id,
-                                    show_id: showId,
-                                    season_number: targetSeason, 
-                                    episode_number: i, // This is still flat, which is a bit wrong if it spans seasons, but better than nothing
-                                    is_watched: true,
-                                    watched_at: new Date().toISOString()
-                                });
+                                    // Add to tracking
+                                    trackingRows.push({
+                                        user_id: user.id,
+                                        show_id: showId,
+                                        season_number: targetSeason,
+                                        episode_number: targetEpisode,
+                                        is_watched: true,
+                                        watched_at: today
+                                    });
+
+                                    // Prepare activity for this episode
+                                    if (!seasonCache.has(targetSeason)) {
+                                        const sDetails = await getSeasonDetails(showId, targetSeason);
+                                        seasonCache.set(targetSeason, sDetails);
+                                    }
+                                    const seasonData = seasonCache.get(targetSeason);
+                                    const epDetails = seasonData?.episodes?.find((e: any) => e.episode_number === targetEpisode);
+
+                                    activitiesToInsert.push({
+                                        user_id: user.id,
+                                        show_id: showId,
+                                        media_type: dbMediaType,
+                                        action: 'progress_updated',
+                                        metadata: {
+                                            ...baseMetadata,
+                                            progress: i,
+                                            episode_title: epDetails?.name,
+                                            episode_image: epDetails?.still_path,
+                                            season_number: targetSeason,
+                                            episode_number: targetEpisode
+                                        }
+                                    });
+                                }
+
+                                // Upsert tracking
+                                if (trackingRows.length > 0) {
+                                    await supabase.from('episode_tracking').upsert(trackingRows, { 
+                                        onConflict: 'user_id, show_id, season_number, episode_number' 
+                                    });
+                                }
                             }
-                            if (trackingRows.length > 0) {
-                                await supabase.from('episode_tracking').upsert(trackingRows, { 
-                                    onConflict: 'user_id, show_id, season_number, episode_number' 
-                                });
-                            }
+                        } catch (e) {
+                            console.error("Error processing episode activities:", e);
                         }
                     }
 
-                    if (action && show) {
-                        await supabase.from('user_activities').insert({
+                    // Handle Status-based activities (Completed, Planning, etc.)
+                    const statusAction = actionMap[status];
+                    if (status === 'Completed') {
+                        // Always add completed activity if status is Completed
+                        activitiesToInsert.push({
                             user_id: user.id,
                             show_id: showId,
                             media_type: dbMediaType,
-                            action: action,
-                            metadata: metadata
+                            action: 'completed',
+                            metadata: baseMetadata
                         });
+                    } else if (activitiesToInsert.length === 0 && statusAction) {
+                        // Only add status action if no episode activities were added 
+                        // (e.g. just moved to Planning, or moved to Watching without progress change)
+                        activitiesToInsert.push({
+                            user_id: user.id,
+                            show_id: showId,
+                            media_type: dbMediaType,
+                            action: statusAction,
+                            metadata: baseMetadata
+                        });
+                    }
+
+                    if (activitiesToInsert.length > 0 && show) {
+                        await supabase.from('user_activities').insert(activitiesToInsert);
                     }
                  }
             }
