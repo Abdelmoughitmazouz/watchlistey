@@ -7,7 +7,7 @@ import ContentCarousel from './components/ContentCarousel';
 import PromoSection from './components/PromoSection';
 import { Show, User, ListItem, ListStatus, AppNotification } from './types';
 import { getTrendingMovies, getTrendingTV, getTopRatedMovies, getActionMovies, getComedyMovies, getSciFiMovies, getShowDetails, slugify, getShowIdFromSlug } from './lib/tmdb';
-import { supabase, isSupabaseConfigured, getProfileByUsername, getProfileById } from './lib/supabaseClient';
+import { supabase, isSupabaseConfigured, getProfileByUsername, getProfileById, ensureProfileExists } from './lib/supabaseClient';
 import { parsePath, getLocalizedPath, DEFAULT_LANGUAGE } from './lib/routeUtils';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
@@ -84,17 +84,6 @@ const App = () => {
 
     useEffect(() => {
         const init = async () => {
-            if (isSupabaseConfigured) {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                    const fullProfile = await getProfileById(session.user.id);
-                    if (fullProfile) setUser(fullProfile);
-                    else {
-                        const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-                        if (profile) setUser({ ...profile, list: {}, favorites: {}, characters: {} });
-                    }
-                }
-            }
             try {
                 const [trendingMovies, trendingTV, topMovies, action, comedy, scifi] = await Promise.all([
                     getTrendingMovies('week', 1, i18n.language),
@@ -116,6 +105,21 @@ const App = () => {
         };
         init();
     }, [i18n.language]);
+
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session) {
+                const fullProfile = await ensureProfileExists(session.user);
+                if (fullProfile) setUser(fullProfile);
+            } else {
+                setUser(undefined);
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, []);
 
     useEffect(() => {
         const resolveContent = async () => {

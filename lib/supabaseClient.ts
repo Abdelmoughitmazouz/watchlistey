@@ -247,6 +247,69 @@ export const getProfileById = async (userId: string): Promise<User | null> => {
     return { ...data, list, favorites, characters };
 };
 
+export const ensureProfileExists = async (user: any): Promise<User | null> => {
+    if (!isSupabaseConfigured || !user) return null;
+    
+    // Check if profile exists
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+        
+    if (profile) return getProfileById(user.id);
+
+    // Profile doesn't exist, create it
+    const metadata = user.user_metadata || {};
+    const fullName = metadata.full_name || metadata.name || 'User';
+    const avatarUrl = metadata.avatar_url || metadata.picture || '';
+    
+    // Generate base username
+    let baseUsername = (metadata.preferred_username || metadata.user_name || fullName.split(' ')[0] || 'user').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!baseUsername) baseUsername = 'user';
+    
+    let uniqueUsername = baseUsername;
+    let isUnique = false;
+    let counter = 0;
+    
+    while (!isUnique) {
+        const checkUsername = counter === 0 ? uniqueUsername : `${uniqueUsername}${counter}`;
+        const { data: existing } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('username', checkUsername)
+            .maybeSingle();
+            
+        if (!existing) {
+            uniqueUsername = checkUsername;
+            isUnique = true;
+        } else {
+            counter++;
+        }
+    }
+    
+    const { data: newProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+            id: user.id,
+            username: uniqueUsername,
+            name: fullName,
+            avatar_url: avatarUrl,
+            email: user.email,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+        
+    if (insertError) {
+        console.error("Error creating profile:", insertError);
+        return null;
+    }
+    
+    return { ...newProfile, list: {}, favorites: {}, characters: {} };
+};
+
 export const getProfileByUsername = async (username: string): Promise<User | null> => {
     if (!isSupabaseConfigured) return null;
     const { data, error } = await supabase.from('profiles').select('*').eq('username', username).single();
