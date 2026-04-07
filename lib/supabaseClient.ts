@@ -257,13 +257,42 @@ export const ensureProfileExists = async (user: any): Promise<User | null> => {
         .eq('id', user.id)
         .maybeSingle();
         
-    if (profile) return getProfileById(user.id);
-
-    // Profile doesn't exist, create it
     const metadata = user.user_metadata || {};
     const fullName = metadata.full_name || metadata.name || 'User';
-    const avatarUrl = metadata.avatar_url || metadata.picture || '';
-    
+    const metadataAvatar = metadata.avatar_url || metadata.picture || '';
+
+    if (profile) {
+        // REPAIR LOGIC: If username is cryptic (e.g. user_ef9fbd85) or avatar is missing
+        const isCryptic = /^user_[a-f0-9]{8}$/.test(profile.username);
+        const needsAvatar = !profile.avatar_url || profile.avatar_url.includes('placeholder') || profile.avatar_url === '';
+        
+        if (isCryptic || needsAvatar) {
+            const updates: any = { updated_at: new Date().toISOString() };
+            let currentUsername = profile.username;
+            
+            if (isCryptic) {
+                let base = fullName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (base.length < 2 && user.email) base = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (!base) base = 'user';
+                
+                let unique = base;
+                const { data: taken } = await supabase.from('profiles').select('username').eq('username', unique).neq('id', user.id).maybeSingle();
+                if (taken) unique = `${base}${Math.floor(100 + Math.random() * 900)}`;
+                updates.username = unique;
+                currentUsername = unique;
+            }
+            
+            if (needsAvatar) {
+                // Use metadata avatar if available, otherwise Dicebear
+                updates.avatar_url = metadataAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUsername}`;
+            }
+            
+            await supabase.from('profiles').update(updates).eq('id', user.id);
+        }
+        return getProfileById(user.id);
+    }
+
+    // Profile doesn't exist, create it
     // Generate base username from Full Name (Real Name)
     let baseUsername = fullName.toLowerCase().replace(/[^a-z0-9]/g, '');
     
@@ -315,6 +344,8 @@ export const ensureProfileExists = async (user: any): Promise<User | null> => {
             uniqueUsername = `${baseUsername}${Date.now().toString().slice(-4)}`;
         }
     }
+
+    const avatarUrl = metadataAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uniqueUsername}`;
     
     const { data: newProfile, error: insertError } = await supabase
         .from('profiles')
