@@ -299,7 +299,7 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
                 <select
                     id="tabs"
                     name="tabs"
-                    className="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-[#1e1e1e] dark:border-gray-700 dark:text-white"
+                    className="block w-full rounded-md border-gray-300 focus:border-brand-primary focus:ring-brand-primary dark:bg-[#1e1e1e] dark:border-gray-700 dark:text-white"
                     onChange={(e) => setActiveTab(e.target.value as any)}
                     value={activeTab}
                 >
@@ -319,13 +319,13 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
                                     onClick={() => setActiveTab(tab)}
                                     className={`whitespace-nowrap flex items-center gap-2 border-b-2 py-4 px-1 text-sm font-medium transition-colors ${
                                         tab === activeTab
-                                            ? 'border-blue-500 text-blue-600 dark:text-brand-primary dark:border-brand-primary'
+                                            ? 'border-brand-primary text-brand-primary'
                                             : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
                                     }`}
                                 >
                                     {tab === 'Favorites' && <HeartIcon className="w-4 h-4 text-pink-500" solid />}
                                     <span>{t(tab === 'All' ? 'common.view_all' : `status.${tab.toLowerCase().replace(/ /g, '_')}`) || tab}</span>
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ tab === activeTab ? 'bg-blue-100 text-blue-600 dark:bg-brand-primary/20 dark:text-brand-primary' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>{count}</span>
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ tab === activeTab ? 'bg-brand-primary/20 text-brand-primary' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>{count}</span>
                                 </button>
                             );
                         })}
@@ -341,7 +341,7 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
                     </div>
                     <input
                         type="text"
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md leading-5 bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-brand-primary dark:focus:border-brand-primary sm:text-sm transition-colors"
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md leading-5 bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm transition-colors"
                         placeholder={activeTab === 'Characters' ? "Search characters..." : "Search shows..."}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -362,7 +362,7 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value as SortOption)}
-                            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-brand-primary dark:focus:border-brand-primary sm:text-sm rounded-md appearance-none bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-white cursor-pointer"
+                            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md appearance-none bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-white cursor-pointer"
                         >
                             <option value="date_desc">{t('search.newest')}</option>
                             <option value="date_asc">{t('search.oldest')}</option>

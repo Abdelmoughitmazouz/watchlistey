@@ -526,7 +526,7 @@ const TierListBuilder: React.FC<TierListBuilderProps> = ({ onNavigate }) => {
                                 </div>
 
                                 {isOwner && (
-                                    <div className="flex flex-col items-center gap-0.5 text-blue-500 hover:text-blue-400 cursor-pointer" onClick={() => setIsEditing(true)}>
+                                    <div className="flex flex-col items-center gap-0.5 text-brand-primary hover:text-brand-primary/80 cursor-pointer" onClick={() => setIsEditing(true)}>
                                         <CustomEditIcon className="w-6 h-6" />
                                         <span className="text-[10px] font-bold tabular-nums">Edit</span>
                                     </div>

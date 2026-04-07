@@ -159,7 +159,7 @@ const PersonPage: React.FC<PersonPageProps> = ({ personId, onNavigate, onBack, u
     if (loading) {
         return (
             <div className="flex h-screen items-center justify-center bg-white dark:bg-[#0f0f0f]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-white"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
             </div>
         );
     }
@@ -308,7 +308,7 @@ const PersonPage: React.FC<PersonPageProps> = ({ personId, onNavigate, onBack, u
                                     <div className="relative border-s-2 border-gray-200 dark:border-gray-800 ml-3 md:ml-4 rtl:ml-0 rtl:mr-3 rtl:md:mr-4 space-y-12 pb-4">
                                         {groupedCast.sortedYears.map((year) => (
                                             <div key={year} className="relative pl-8 md:pl-12 rtl:pl-0 rtl:pr-8 rtl:md:pr-12">
-                                                <span className="absolute -left-[9px] rtl:left-auto rtl:-right-[9px] top-1.5 h-4 w-4 rounded-full bg-blue-600 dark:bg-brand-primary ring-4 ring-white dark:ring-[#0f0f0f]" />
+                                                <span className="absolute -left-[9px] rtl:left-auto rtl:-right-[9px] top-1.5 h-4 w-4 rounded-full bg-brand-primary ring-4 ring-white dark:ring-[#0f0f0f]" />
                                                 <div className="flex flex-col gap-4">
                                                     <h4 className="text-2xl font-bold text-gray-900 dark:text-white leading-none opacity-40 text-start">{year}</h4>
                                                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

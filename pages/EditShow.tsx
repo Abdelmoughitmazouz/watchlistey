@@ -81,7 +81,7 @@ const EditShow: React.FC<EditShowProps> = ({ show, onSave, onCancel }) => {
         onSave(formData);
     };
 
-    const inputStyles = "bg-white/80 focus:bg-white ring-1 ring-transparent focus:ring-blue-600 focus:shadow-md rounded-md transition-all duration-200 outline-none";
+    const inputStyles = "bg-white/80 focus:bg-white ring-1 ring-transparent focus:ring-brand-primary focus:shadow-md rounded-md transition-all duration-200 outline-none";
 
     return (
         <form onSubmit={handleSubmit}>
@@ -91,7 +91,7 @@ const EditShow: React.FC<EditShowProps> = ({ show, onSave, onCancel }) => {
                     <h2 className="text-lg font-semibold text-gray-800">Editing: <span className="font-bold">{formData.title}</span></h2>
                     <div className="flex items-center gap-3">
                         <button type="button" onClick={onCancel} className="rounded-lg px-4 py-2 text-sm font-semibold bg-white text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Cancel</button>
-                        <button type="submit" className="rounded-lg px-4 py-2 text-sm font-semibold bg-blue-600 text-white shadow-sm hover:bg-blue-700">Save Changes</button>
+                        <button type="submit" className="rounded-lg px-4 py-2 text-sm font-semibold bg-brand-primary text-black shadow-sm hover:bg-brand-primary/90">Save Changes</button>
                     </div>
                 </div>
             </div>
@@ -122,7 +122,7 @@ const EditShow: React.FC<EditShowProps> = ({ show, onSave, onCancel }) => {
                             name="title"
                             value={formData.title}
                             onChange={handleChange}
-                            className={`text-4xl md:text-5xl font-bold text-gray-900 w-full bg-transparent focus:bg-white/80 focus:ring-2 focus:ring-blue-500 rounded-lg p-2 -ml-2 transition`}
+                            className={`text-4xl md:text-5xl font-bold text-gray-900 w-full bg-transparent focus:bg-white/80 focus:ring-2 focus:ring-brand-primary rounded-lg p-2 -ml-2 transition`}
                         />
                         <div className="flex items-center space-x-4 text-md text-gray-500 my-3">
                             <input type="number" name="year" value={formData.year} onChange={handleNumberChange} className={`w-20 p-1 bg-transparent ${inputStyles}`} />
@@ -139,7 +139,7 @@ const EditShow: React.FC<EditShowProps> = ({ show, onSave, onCancel }) => {
                             name="description"
                             value={formData.description}
                             onChange={handleChange}
-                            className={`text-gray-700 text-base md:text-lg mb-6 max-w-2xl w-full bg-transparent p-2 -ml-2 resize-none overflow-hidden focus:bg-white/80 focus:ring-2 focus:ring-blue-500 rounded-lg transition`}
+                            className={`text-gray-700 text-base md:text-lg mb-6 max-w-2xl w-full bg-transparent p-2 -ml-2 resize-none overflow-hidden focus:bg-white/80 focus:ring-2 focus:ring-brand-primary rounded-lg transition`}
                         />
                         
                         <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mb-6">
@@ -174,7 +174,7 @@ const EditShow: React.FC<EditShowProps> = ({ show, onSave, onCancel }) => {
                                 value={formData.participants?.map(p => p.name).join(', ') || ''}
                                 onChange={handleParticipantsChange}
                                 placeholder="Comma-separated names of participants"
-                                className={`w-full p-2 -ml-2 bg-transparent resize-none overflow-hidden focus:bg-white/80 focus:ring-2 focus:ring-blue-500 rounded-lg transition`}
+                                className={`w-full p-2 -ml-2 bg-transparent resize-none overflow-hidden focus:bg-white/80 focus:ring-2 focus:ring-brand-primary rounded-lg transition`}
                             />
                         </div>
                     </div>

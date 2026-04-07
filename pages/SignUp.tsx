@@ -131,7 +131,7 @@ const SignUp: React.FC<SignUpProps> = ({ onNavigate, onLogin }) => {
             <form onSubmit={handleSubmit} className="space-y-5">
                 {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-300 rounded-lg text-sm border border-red-200 dark:border-red-800">{error}</div>}
                 {!isSupabaseConfigured && (
-                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-lg text-sm border border-blue-200 dark:border-blue-800">
+                    <div className="p-3 bg-brand-primary/10 dark:bg-brand-primary/10 text-brand-primary rounded-lg text-sm border border-brand-primary/20 dark:border-brand-primary/20">
                         {t('auth.demo_mode')}
                     </div>
                 )}

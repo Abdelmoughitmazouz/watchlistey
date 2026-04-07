@@ -331,7 +331,7 @@ const ProfileSettings = ({ user, onUpdateUser, onSuccess }: SectionProps) => {
                                 className="w-full h-full rounded-full"
                                 onUploadStatusChange={setIsUploading}
                             />
-                            {formData.is_verified && <VerifiedBadgeIcon className="absolute -bottom-1 -right-1 size-8 text-blue-500" />}
+                            {formData.is_verified && <VerifiedBadgeIcon className="absolute -bottom-1 -right-1 size-8 text-brand-primary" />}
                         </div>
                     </div>
                 </FormField>

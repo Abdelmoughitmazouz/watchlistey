@@ -169,7 +169,7 @@ const NetworkPage: React.FC<NetworkPageProps> = ({ networkId, onNavigate, onBack
     if (loading) {
         return (
             <div className="flex h-screen items-center justify-center bg-white dark:bg-[#0f0f0f]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-brand-primary"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
             </div>
         );
     }
@@ -239,7 +239,7 @@ const NetworkPage: React.FC<NetworkPageProps> = ({ networkId, onNavigate, onBack
                                 {network.homepage && (
                                     <div>
                                         <span className="block text-sm font-medium text-gray-500 dark:text-gray-400">Website</span>
-                                        <a href={network.homepage} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-brand-primary hover:underline break-all flex items-center gap-1 mt-1">
+                                        <a href={network.homepage} target="_blank" rel="noopener noreferrer" className="text-brand-primary hover:underline break-all flex items-center gap-1 mt-1">
                                             <LinkIcon className="w-4 h-4 flex-shrink-0" /> Visit Homepage
                                         </a>
                                     </div>
@@ -260,7 +260,7 @@ const NetworkPage: React.FC<NetworkPageProps> = ({ networkId, onNavigate, onBack
                                 {groupedShows.sortedYears.map((year) => (
                                     <div key={year} className="relative pl-8 md:pl-12">
                                         {/* Timeline Dot */}
-                                        <span className="absolute -left-[9px] top-1.5 h-4 w-4 rounded-full bg-blue-600 dark:bg-brand-primary ring-4 ring-white dark:ring-[#0f0f0f]" />
+                                        <span className="absolute -left-[9px] top-1.5 h-4 w-4 rounded-full bg-brand-primary ring-4 ring-white dark:ring-[#0f0f0f]" />
                                         
                                         <div className="flex flex-col gap-4">
                                             <h4 className="text-2xl font-bold text-gray-900 dark:text-white leading-none opacity-40">{year}</h4>

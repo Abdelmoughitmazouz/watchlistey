@@ -194,7 +194,7 @@ const GenrePage: React.FC<GenrePageProps> = ({ genreId, onNavigate, onBack, user
     if (loading && shows.length === 0) {
         return (
             <div className="flex h-screen items-center justify-center bg-white dark:bg-[#0f0f0f]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-brand-primary"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
             </div>
         );
     }
@@ -217,7 +217,7 @@ const GenrePage: React.FC<GenrePageProps> = ({ genreId, onNavigate, onBack, user
                     >
                         <FilterIcon className="w-6 h-6" />
                         {activeFiltersCount > 0 && (
-                            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-white dark:border-[#1e1e1e]"></span>
+                            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-brand-primary rounded-full border-2 border-white dark:border-[#1e1e1e]"></span>
                         )}
                     </button>
                 </div>
@@ -257,7 +257,7 @@ const GenrePage: React.FC<GenrePageProps> = ({ genreId, onNavigate, onBack, user
                                     <select
                                         value={sortBy}
                                         onChange={(e) => setSortBy(e.target.value)}
-                                        className="appearance-none pl-3 pr-8 py-1.5 bg-white dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-primary transition-shadow cursor-pointer"
+                                        className="appearance-none pl-3 pr-8 py-1.5 bg-white dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-shadow cursor-pointer"
                                     >
                                         <option value="relevance">{t('search.relevance')}</option>
                                         <option value="newest">{t('search.newest')}</option>
@@ -289,7 +289,7 @@ const GenrePage: React.FC<GenrePageProps> = ({ genreId, onNavigate, onBack, user
                                 {hasMore && (
                                     <div ref={lastElementRef} className="flex justify-center py-8">
                                         {loadingMore && (
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-brand-primary"></div>
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
                                         )}
                                     </div>
                                 )}

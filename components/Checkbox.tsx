@@ -27,11 +27,11 @@ const Checkbox: React.FC<CheckboxProps> = ({ id, label, checked, onChange, name 
                 />
                 <label
                     htmlFor={id}
-                    className={`flex size-4 cursor-pointer items-center justify-center rounded border-2 border-gray-300 bg-white ring-offset-2 transition-all peer-focus:ring-2 peer-focus:ring-blue-500 ${
-                        checked ? 'border-blue-600 bg-blue-600' : ''
+                    className={`flex size-4 cursor-pointer items-center justify-center rounded border-2 border-gray-300 bg-white ring-offset-2 transition-all peer-focus:ring-2 peer-focus:ring-brand-primary ${
+                        checked ? 'border-brand-primary bg-brand-primary' : ''
                     }`}
                 >
-                    <CheckboxIcon className={`text-white transition-opacity ${checked ? 'opacity-100' : 'opacity-0'}`} />
+                    <CheckboxIcon className={`text-black transition-opacity ${checked ? 'opacity-100' : 'opacity-0'}`} />
                 </label>
             </div>
             <div className="ml-3 text-sm">

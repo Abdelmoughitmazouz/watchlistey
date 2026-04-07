@@ -533,7 +533,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                 {shouldTruncate && (
                                     <button 
                                         onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                                        className="text-blue-600 dark:text-brand-primary font-semibold text-sm hover:underline mt-2 focus:outline-none"
+                                        className="text-brand-primary font-semibold text-sm hover:underline mt-2 focus:outline-none"
                                     >
                                         {isDescriptionExpanded ? t('common.read_less') : t('common.read_more')}
                                     </button>
@@ -545,7 +545,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                     <button 
                                         key={genre} 
                                         onClick={() => handleGenreClick(genre)}
-                                        className="bg-gray-100 dark:bg-[#1e1e1e] hover:bg-blue-600 dark:hover:bg-brand-primary hover:text-white dark:hover:text-[#121212] transition-colors text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full cursor-pointer ring-1 ring-gray-300 dark:ring-gray-700 hover:ring-transparent"
+                                        className="bg-gray-100 dark:bg-[#1e1e1e] hover:bg-brand-primary hover:text-black dark:hover:bg-brand-primary dark:hover:text-[#121212] transition-colors text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full cursor-pointer ring-1 ring-gray-300 dark:ring-gray-700 hover:ring-transparent"
                                     >
                                         {t(`genres.${genre}`, genre)}
                                     </button>
@@ -605,7 +605,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                     <a href={`https://twitter.com/${show.external_ids.twitter_id}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-black dark:hover:text-white transition-colors"><XIcon className="w-5 h-5" /></a>
                                 )}
                                 {show.homepage && (
-                                    <a href={show.homepage} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 dark:hover:text-brand-primary transition-colors" title="Website">
+                                    <a href={show.homepage} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-brand-primary transition-colors" title="Website">
                                         <LinkIcon className="w-6 h-6" />
                                     </a>
                                 )}
@@ -613,14 +613,14 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                             <div className="space-y-4 text-sm">
                                 <div>
                                     <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.format')}</span>
-                                    <button onClick={handleFormatClick} className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-brand-primary transition-colors text-start">
+                                    <button onClick={handleFormatClick} className="text-gray-900 dark:text-white hover:text-brand-primary transition-colors text-start">
                                         {getFormat()}
                                     </button>
                                 </div>
                                 {show.status && (
                                     <div>
                                         <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('common.status')}</span>
-                                        <button onClick={handleStatusClick} className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-brand-primary transition-colors text-start">
+                                        <button onClick={handleStatusClick} className="text-gray-900 dark:text-white hover:text-brand-primary transition-colors text-start">
                                             {show.status}
                                         </button>
                                     </div>
@@ -628,7 +628,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                 {show.original_language && (
                                     <div>
                                         <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.original_language')}</span>
-                                        <button onClick={handleLanguageClick} className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-brand-primary transition-colors text-start">
+                                        <button onClick={handleLanguageClick} className="text-gray-900 dark:text-white hover:text-brand-primary transition-colors text-start">
                                             {formatLanguage(show.original_language)}
                                         </button>
                                     </div>
@@ -643,7 +643,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                     <div>
                                         <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.episodes')}</span>
                                         <div className="flex items-center gap-2">
-                                            <button onClick={handleEpisodesClick} className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-brand-primary transition-colors text-start">
+                                            <button onClick={handleEpisodesClick} className="text-gray-900 dark:text-white hover:text-brand-primary transition-colors text-start">
                                                 {show.number_of_episodes}
                                             </button>
                                             {currentUser && show.media_type === 'tv' && (
@@ -711,7 +711,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{show.is_anime ? t('details.voice_actors') : t('details.cast')}</h2>
                                     <button 
                                         onClick={handleViewFullCast}
-                                        className="text-sm font-semibold text-blue-600 dark:text-brand-primary hover:underline flex items-center gap-1"
+                                        className="text-sm font-semibold text-brand-primary hover:underline flex items-center gap-1"
                                     >
                                         {t('common.view_all')} <ArrowRightIcon className="w-4 h-4 rtl:rotate-180" />
                                     </button>
@@ -747,12 +747,12 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                                         </button>
                                                     )}
                                                 </div>
-                                                <h3 className="font-bold text-gray-900 dark:text-white text-sm truncate group-hover/actor:text-blue-600 dark:group-hover/actor:text-brand-primary">{member.name}</h3>
+                                                <h3 className="font-bold text-gray-900 dark:text-white text-sm truncate group-hover/actor:text-brand-primary">{member.name}</h3>
                                                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{member.character}</p>
                                             </a>
                                         )})}
                                         <div className="flex-shrink-0 w-32 snap-start">
-                                            <button onClick={handleViewFullCast} className="flex flex-col items-center justify-center w-full aspect-[2/3] rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-600 dark:hover:border-brand-primary dark:hover:text-brand-primary transition-colors">
+                                            <button onClick={handleViewFullCast} className="flex flex-col items-center justify-center w-full aspect-[2/3] rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-brand-primary hover:text-brand-primary transition-colors">
                                                 <span className="font-bold text-sm">{t('common.view_all')}</span>
                                                 <ArrowRightIcon className="w-4 h-4 mt-1 rtl:rotate-180" />
                                             </button>

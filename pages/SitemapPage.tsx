@@ -231,7 +231,7 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
                 <div className="mb-8">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Sitemap Aggregator</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <StatCard label="Live Movies" count={stats.movies} loading={statsLoading} icon={<MovieIcon />} color="bg-blue-500" />
+                        <StatCard label="Live Movies" count={stats.movies} loading={statsLoading} icon={<MovieIcon />} color="bg-brand-primary" />
                         <StatCard label="Live TV Shows" count={stats.tv} loading={statsLoading} icon={<TvIcon />} color="bg-purple-500" />
                         <StatCard label="Live People" count={stats.people} loading={statsLoading} icon={<PersonIcon />} color="bg-yellow-500" />
                     </div>
@@ -257,14 +257,14 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigate }) => {
                     </div>
 
                     {isGenerating && (
-                        <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-lg border border-blue-100 dark:border-blue-900/30">
+                        <div className="bg-brand-primary/10 dark:bg-brand-primary/10 p-6 rounded-lg border border-brand-primary/20 dark:border-brand-primary/20">
                             <div className="flex justify-between items-center mb-4">
-                                <span className="font-semibold text-blue-800 dark:text-blue-200">{statusMessage}</span>
-                                <span className="text-lg font-bold text-blue-700 dark:text-blue-300">{progress}%</span>
+                                <span className="font-semibold text-brand-primary">{statusMessage}</span>
+                                <span className="text-lg font-bold text-brand-primary">{progress}%</span>
                             </div>
                             
                             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-6 overflow-hidden">
-                                <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                                <div className="bg-brand-primary h-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-bold uppercase tracking-wider">

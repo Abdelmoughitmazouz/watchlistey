@@ -361,7 +361,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
                                     <select
                                         value={sortBy}
                                         onChange={(e) => setSortBy(e.target.value)}
-                                        className="appearance-none ps-3 pe-8 py-1.5 bg-white dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-primary transition-shadow cursor-pointer"
+                                        className="appearance-none ps-3 pe-8 py-1.5 bg-white dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-shadow cursor-pointer"
                                     >
                                         <option value="relevance">{t('search.relevance')}</option>
                                         <option value="newest">{t('search.newest')}</option>
@@ -377,7 +377,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
 
                         {loading && results.length === 0 ? (
                              <div className="flex flex-col items-center justify-center py-20">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-[#fdfa84]"></div>
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
                                 <p className="mt-4 text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
                             </div>
                         ) : filteredResults.length > 0 ? (

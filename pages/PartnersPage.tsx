@@ -22,10 +22,10 @@ const PartnersPage = () => {
                         <p className="text-gray-600 dark:text-gray-400 mb-6">
                             Our primary source for movie, TV show, and people data. TMDB provides the comprehensive metadata that powers Watchlistey.
                         </p>
-                        <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer" className="text-blue-500 font-semibold hover:underline">Visit TMDB</a>
+                        <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer" className="text-brand-primary font-semibold hover:underline">Visit TMDB</a>
                     </div>
                     <div className="bg-gray-50 dark:bg-[#1e1e1e] p-8 rounded-2xl flex flex-col items-center text-center">
-                        <div className="h-20 w-20 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-6 text-3xl">📺</div>
+                        <div className="h-20 w-20 bg-brand-primary/10 dark:bg-brand-primary/10 rounded-full flex items-center justify-center mb-6 text-3xl">📺</div>
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Streaming Data</h3>
                         <p className="text-gray-600 dark:text-gray-400 mb-6">
                             We integrate with various streaming availability providers to help you find where to watch your favorite content.

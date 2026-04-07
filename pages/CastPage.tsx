@@ -72,7 +72,7 @@ const CastPage: React.FC<CastPageProps> = ({ show, onBack, onNavigate, userChara
                             <div className="p-4">
                                 <h2 className="text-lg font-bold text-gray-900 dark:text-white hover:underline cursor-pointer" onClick={onBack}>{show.title}</h2>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">{show.year}</p>
-                                <button onClick={onBack} className="text-sm text-blue-600 dark:text-brand-primary font-semibold mt-3 hover:underline">
+                                <button onClick={onBack} className="text-sm text-brand-primary font-semibold mt-3 hover:underline">
                                     ← Back to main page
                                 </button>
                             </div>
@@ -131,7 +131,7 @@ const CastPage: React.FC<CastPageProps> = ({ show, onBack, onNavigate, userChara
                                                 </button>
                                             )}
                                         </div>
-                                        <h3 className="font-bold text-gray-900 dark:text-white text-sm truncate group-hover:text-blue-600 dark:group-hover:text-brand-primary transition-colors">{member.name}</h3>
+                                        <h3 className="font-bold text-gray-900 dark:text-white text-sm truncate group-hover:text-brand-primary transition-colors">{member.name}</h3>
                                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{member.character}</p>
                                     </a>
                                 )})}

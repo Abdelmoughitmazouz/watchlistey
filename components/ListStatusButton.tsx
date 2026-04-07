@@ -97,7 +97,7 @@ const ListStatusButton: React.FC<ListStatusButtonProps> = ({
     // Distinct Color Palette for Statuses
     const statusStyles: { [key: string]: string } = {
         'Watching': 'bg-green-500 border-green-600 text-white',
-        'Completed': 'bg-blue-600 border-blue-700 text-white',
+        'Completed': 'bg-brand-primary border-brand-primary text-black',
         'Planning': 'bg-gray-500 border-gray-600 text-white',
         'Paused': 'bg-amber-500 border-amber-600 text-white',
         'Dropped': 'bg-red-600 border-red-700 text-white',

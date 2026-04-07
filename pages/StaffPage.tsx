@@ -103,7 +103,7 @@ const StaffPage: React.FC<StaffPageProps> = ({ staffId, onNavigate, onBack, user
     if (loading) {
         return (
             <div className="flex h-screen items-center justify-center bg-white dark:bg-[#0f0f0f]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-brand-primary"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
             </div>
         );
     }

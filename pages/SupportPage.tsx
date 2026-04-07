@@ -17,12 +17,12 @@ const SupportPage = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                    <div className="bg-blue-50 dark:bg-blue-900/10 p-8 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                    <div className="bg-brand-primary/10 dark:bg-brand-primary/10 p-8 rounded-2xl border border-brand-primary/20 dark:border-brand-primary/20">
                         <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Account Access</h3>
                         <p className="text-gray-600 dark:text-gray-300 mb-6">
                             Trouble logging in? Need to reset your password or update your email?
                         </p>
-                        <a href="/forgot-password" className="text-blue-600 dark:text-brand-primary font-semibold hover:underline">Reset Password →</a>
+                        <a href="/forgot-password" className="text-brand-primary font-semibold hover:underline">Reset Password →</a>
                     </div>
                     <div className="bg-green-50 dark:bg-green-900/10 p-8 rounded-2xl border border-green-100 dark:border-green-900/30">
                         <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Billing & Plans</h3>

@@ -40,7 +40,7 @@ const TMDBDemo: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary mx-auto mb-4"></div>
                     <p className="text-gray-500">Fetching lists and hydrating full details...</p>
                 </div>
             </div>
@@ -57,7 +57,7 @@ const TMDBDemo: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate
                     </p>
                     <button 
                         onClick={() => onNavigate('/')}
-                        className="mt-6 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+                        className="mt-6 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-black bg-brand-primary hover:bg-brand-primary/90"
                     >
                         Back to Home
                     </button>
