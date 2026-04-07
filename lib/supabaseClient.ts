@@ -281,5 +281,70 @@ function stringToNumber(str: string): number {
 }
 
 export const SUPABASE_SCHEMA_SQL = `
--- [Previous SQL Schema]
+-- Posts Table
+create table public.posts (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  user_id uuid null,
+  content text not null,
+  media_id integer null,
+  media_type character varying(20) null,
+  media_title character varying(255) null,
+  media_image text null,
+  carousel_images text[] null default '{}'::text[],
+  link_url text null,
+  link_text character varying(50) null,
+  is_spoiler boolean null default false,
+  is_edited boolean null default false,
+  visibility character varying(20) null default 'public'::character varying,
+  tags text[] null default '{}'::text[],
+  likes_count integer null default 0,
+  replies_count integer null default 0,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  constraint posts_pkey primary key (id),
+  constraint posts_user_id_fkey foreign KEY (user_id) references profiles (id) on delete CASCADE
+);
+
+-- Enable RLS
+alter table public.posts enable row level security;
+
+-- Policies
+create policy "Allow public read access"
+  on public.posts for select
+  using ( true );
+
+create policy "Allow authenticated insert"
+  on public.posts for insert
+  with check ( auth.uid() = user_id );
+
+create policy "Allow individual update"
+  on public.posts for update
+  using ( auth.uid() = user_id );
+
+create policy "Allow individual delete"
+  on public.posts for delete
+  using ( auth.uid() = user_id );
+
+-- User Activities
+alter table public.user_activities enable row level security;
+create policy "Allow public read" on public.user_activities for select using (true);
+create policy "Allow auth insert" on public.user_activities for insert with check (auth.uid() = user_id);
+
+-- Activity Likes
+alter table public.activity_likes enable row level security;
+create policy "Allow public read" on public.activity_likes for select using (true);
+create policy "Allow auth insert" on public.activity_likes for insert with check (auth.uid() = user_id);
+create policy "Allow auth delete" on public.activity_likes for delete using (auth.uid() = user_id);
+
+-- Activity Comments
+alter table public.activity_comments enable row level security;
+create policy "Allow public read" on public.activity_comments for select using (true);
+create policy "Allow auth insert" on public.activity_comments for insert with check (auth.uid() = user_id);
+create policy "Allow auth delete" on public.activity_comments for delete using (auth.uid() = user_id);
+
+-- Notifications
+alter table public.notifications enable row level security;
+create policy "Allow individual read" on public.notifications for select using (auth.uid() = user_id);
+create policy "Allow system insert" on public.notifications for insert with check (true); -- Usually triggered by functions, but for simple apps we allow auth insert
+create policy "Allow individual update" on public.notifications for update using (auth.uid() = user_id);
 `;

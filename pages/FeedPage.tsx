@@ -27,6 +27,7 @@ import { User } from '../types';
 import { supabase, isSupabaseConfigured, getActivities, createPost, uploadFile } from '../lib/supabaseClient';
 import { Avatar } from '../components/Avatar';
 import RichTextEditor from '../components/RichTextEditor';
+import { Toast, Toaster, ToastProps } from '../components/Toast';
 
 interface FeedPageProps {
     onNavigate: (path: string) => void;
@@ -43,6 +44,16 @@ const FeedPage: React.FC<FeedPageProps> = ({ onNavigate, currentUser }) => {
     const [suggestedUsers, setSuggestedUsers] = useState<Partial<User>[]>([]);
     const [loadingSuggestions, setLoadingSuggestions] = useState(true);
     const [feedItems, setFeedItems] = useState<any[]>([]);
+    const [toasts, setToasts] = useState<Omit<ToastProps, 'onClose' | 'style' | 'visible'>[]>([]);
+
+    const addToast = (title: string, message: string, type: 'success' | 'error' | 'info' = 'success') => {
+        const id = Math.random().toString(36).substring(2, 9);
+        setToasts(prev => [...prev, { id, title, message, type }]);
+    };
+
+    const removeToast = (id: string) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    };
 
     useSEO("Activity Feed", "See what everyone is watching on Watchlistey.");
 
@@ -96,6 +107,7 @@ const FeedPage: React.FC<FeedPageProps> = ({ onNavigate, currentUser }) => {
                     carousel_images: postImages.length > 0 ? postImages : null
                 });
                 
+                addToast("Success", "Your post has been published!", "success");
                 setPostText('');
                 setPostImages([]);
                 setIsSpoiler(false);
@@ -103,8 +115,10 @@ const FeedPage: React.FC<FeedPageProps> = ({ onNavigate, currentUser }) => {
                 const activities = await getActivities();
                 setFeedItems(activities);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error creating post:', error);
+            const message = error.message || "Failed to create post. Please check your connection.";
+            addToast("Error", message, "error");
         } finally {
             setIsPosting(false);
         }
@@ -390,6 +404,7 @@ const FeedPage: React.FC<FeedPageProps> = ({ onNavigate, currentUser }) => {
 
                 </motion.div>
             </div>
+            <Toaster toasts={toasts} removeToast={removeToast} />
         </div>
     );
 };
