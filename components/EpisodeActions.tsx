@@ -10,6 +10,9 @@ interface EpisodeActionsProps {
     episodeNumber: number;
     isLoggedIn: boolean;
     onNavigate?: (path: string) => void;
+    totalEpisodes?: number;
+    showTitle?: string;
+    showImage?: string;
 }
 
 const EpisodeActions: React.FC<EpisodeActionsProps> = ({ 
@@ -17,7 +20,10 @@ const EpisodeActions: React.FC<EpisodeActionsProps> = ({
     seasonNumber, 
     episodeNumber,
     isLoggedIn,
-    onNavigate
+    onNavigate,
+    totalEpisodes,
+    showTitle,
+    showImage
 }) => {
     const [activity, setActivity] = useState<EpisodeActivity | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -86,9 +92,34 @@ const EpisodeActions: React.FC<EpisodeActionsProps> = ({
                 .upsert(newActivity, { onConflict: 'user_id, show_id, season_number, episode_number' });
 
             if (error) throw error;
+
+            // If marked as watched, post to feed
+            if (updates.is_watched === true) {
+                // Fetch current watched count for progress
+                const { count: watchedCount } = await supabase
+                    .from('episode_tracking')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', activity.user_id)
+                    .eq('show_id', showId)
+                    .eq('is_watched', true);
+
+                await supabase.from('user_activities').insert({
+                    user_id: activity.user_id,
+                    show_id: showId,
+                    media_type: 'tv',
+                    action: 'progress_updated',
+                    metadata: {
+                        title: showTitle || 'Show',
+                        image: showImage?.replace('https://image.tmdb.org/t/p/w500', ''),
+                        progress: watchedCount || episodeNumber,
+                        total_episodes: totalEpisodes,
+                        season: seasonNumber,
+                        episode: episodeNumber
+                    }
+                });
+            }
         } catch (e) {
             console.error("Error updating episode", e);
-            // Revert on error could be implemented here
         } finally {
             setIsUpdating(false);
         }

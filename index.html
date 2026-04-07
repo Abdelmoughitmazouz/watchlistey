@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
     
+    <script>
+      // Fix for "Cannot set property fetch of #<Window> which has only a getter"
+      // Some libraries try to polyfill fetch by assigning to window.fetch or global.fetch.
+      if (typeof global === 'undefined') {
+        window.global = window;
+      }
+      // If fetch is defined as a getter on the prototype chain (e.g. Window.prototype),
+      // assigning to window.fetch will throw. We can shadow it with a configurable property.
+      try {
+        let currentFetch = window.fetch;
+        Object.defineProperty(window, 'fetch', {
+          get: function() { return currentFetch; },
+          set: function(val) { currentFetch = val; },
+          configurable: true,
+          enumerable: true
+        });
+      } catch (e) {}
+    </script>
+
     <!-- Primary Meta Tags -->
     <title>Track Movies, TV & Anime | Ultimate Watchlist App</title>
     <meta name="title" content="Track Movies, TV & Anime | Ultimate Watchlist App" />
@@ -60,7 +79,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://api.themoviedb.org">
     <link rel="preconnect" href="https://image.tmdb.org">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
     <style>
       body {
         font-family: 'Inter', sans-serif;
@@ -97,29 +116,7 @@
         background: #4b5563; /* Gray track */
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@18.3.1",
-    "react/": "https://esm.sh/react@18.3.1/",
-    "react-dom": "https://esm.sh/react-dom@18.3.1",
-    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
-    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.1",
-    "xlsx": "https://esm.sh/xlsx@0.18.5",
-    "i18next": "https://esm.sh/i18next@23.11.5",
-    "react-i18next": "https://esm.sh/react-i18next@14.1.2?external=react,react-dom,i18next",
-    "i18next-browser-languagedetector": "https://esm.sh/i18next-browser-languagedetector@8.0.0?external=i18next",
-    "i18next-http-backend": "https://esm.sh/i18next-http-backend@2.5.2?external=i18next",
-    "vite": "https://esm.sh/vite@^7.2.7",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "html2canvas": "https://esm.sh/html2canvas@^1.4.1",
-    "jszip": "https://esm.sh/jszip@3.10.1",
-    "@google/genai": "https://esm.sh/@google/genai"
-  }
-}
-</script>
-</head>
+  </head>
   <body class="bg-white text-gray-900 dark:bg-[#0f0f0f] dark:text-white transition-colors duration-200">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>

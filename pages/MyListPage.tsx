@@ -22,6 +22,35 @@ const allTabs: (ListStatus | 'All' | 'Characters' | 'Favorites')[] = ['All', 'Fa
 
 type SortOption = 'date_desc' | 'date_asc' | 'name_asc' | 'name_desc';
 
+// Skeleton Card Component
+const SkeletonCard: React.FC = () => (
+    <div className="relative aspect-[2/3] bg-gray-200 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" style={{ transform: 'skewX(-20deg)' }}></div>
+        <div className="absolute bottom-0 left-0 right-0 p-3">
+            <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-2 animate-pulse"></div>
+            <div className="h-2 bg-gray-300 dark:bg-gray-700 rounded w-1/2 animate-pulse"></div>
+        </div>
+    </div>
+);
+
+const SkeletonListRow: React.FC = () => (
+    <div className="flex flex-col sm:flex-row py-4">
+        <div className="flex-shrink-0 h-48 w-32 bg-gray-200 dark:bg-gray-800 rounded-md animate-pulse"></div>
+        <div className="ml-0 mt-4 sm:mt-0 sm:ml-6 flex flex-1 flex-col justify-between">
+            <div>
+                <div className="flex justify-between items-start">
+                    <div className="h-5 bg-gray-200 dark:bg-gray-800 rounded w-1/3 mb-2 animate-pulse"></div>
+                </div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-1/4 mb-4 animate-pulse"></div>
+                <div className="space-y-2">
+                    <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded w-full animate-pulse"></div>
+                    <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded w-5/6 animate-pulse"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
 const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, userFavorites = {}, shows, onNavigate, handleUpdateListStatus, handleToggleFavorite }) => {
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState<ListStatus | 'All' | 'Characters' | 'Favorites'>('All');
@@ -239,35 +268,6 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
             >
                 <GridViewIcon className="w-5 h-5" />
             </button>
-        </div>
-    );
-
-    // Skeleton Card Component
-    const SkeletonCard = () => (
-        <div className="relative aspect-[2/3] bg-gray-200 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" style={{ transform: 'skewX(-20deg)' }}></div>
-            <div className="absolute bottom-0 left-0 right-0 p-3">
-                <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-2 animate-pulse"></div>
-                <div className="h-2 bg-gray-300 dark:bg-gray-700 rounded w-1/2 animate-pulse"></div>
-            </div>
-        </div>
-    );
-
-    const SkeletonListRow = () => (
-        <div className="flex flex-col sm:flex-row py-4">
-            <div className="flex-shrink-0 h-48 w-32 bg-gray-200 dark:bg-gray-800 rounded-md animate-pulse"></div>
-            <div className="ml-0 mt-4 sm:mt-0 sm:ml-6 flex flex-1 flex-col justify-between">
-                <div>
-                    <div className="flex justify-between items-start">
-                        <div className="h-5 bg-gray-200 dark:bg-gray-800 rounded w-1/3 mb-2 animate-pulse"></div>
-                    </div>
-                    <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-1/4 mb-4 animate-pulse"></div>
-                    <div className="space-y-2">
-                        <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded w-full animate-pulse"></div>
-                        <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded w-5/6 animate-pulse"></div>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 

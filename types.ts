@@ -18,7 +18,7 @@ export interface ListItem {
 }
 
 export interface UserActivity {
-  id: number;
+  id: string | number;
   user_id: string;
   show_id?: number;
   media_type?: 'movie' | 'tv' | 'person';
@@ -31,6 +31,10 @@ export interface UserActivity {
     prev_progress?: number;
     rating?: number;
     episode_range?: string;
+    mediaUrl?: string;
+    mediaType?: 'image' | 'youtube' | 'link';
+    isSpoiler?: boolean;
+    carousel_images?: string[];
   };
   likes: number;
   replies: number;
@@ -183,7 +187,7 @@ export interface User {
 }
 
 export interface Comment {
-  id: number;
+  id: string | number;
   user: User;
   user_id: string;
   text: string;
@@ -191,7 +195,7 @@ export interface Comment {
   likes: number;
   dislikes: number;
   replies?: Comment[];
-  parent_id?: number | null;
+  parent_id?: string | number | null;
 }
 
 export type ListStatus = 'Watching' | 'Completed' | 'Plan to Watch' | 'Paused' | 'Dropped' | 'Rewatching' | 'Favorite' | string;

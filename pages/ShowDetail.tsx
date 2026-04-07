@@ -74,6 +74,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
 
     const [dbFavCount, setDbFavCount] = useState<number>(0);
     const [initialFavState, setInitialFavState] = useState<boolean>(false);
+    const [watchedCount, setWatchedCount] = useState<number>(0);
 
     useEffect(() => {
         let isMounted = true;
@@ -88,13 +89,26 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                     setDbFavCount(count);
                     setInitialFavState(isFavorite); 
                 }
+
+                // Fetch watched episodes count
+                if (currentUser && show.media_type === 'tv') {
+                    const { count: wCount, error: wError } = await supabase
+                        .from('episode_tracking')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('user_id', currentUser.id)
+                        .eq('show_id', show.id)
+                        .eq('is_watched', true);
+                    if (isMounted && !wError && wCount !== null) {
+                        setWatchedCount(wCount);
+                    }
+                }
             } else {
                 if (isMounted) setDbFavCount(show.vote_count || 0);
             }
         };
         fetchRealCount();
         return () => { isMounted = false; };
-    }, [show.id]); 
+    }, [show.id, currentUser?.id]); 
 
     const realFavoritesCount = Math.max(0, dbFavCount + (isFavorite ? 1 : 0) - (initialFavState ? 1 : 0));
 
@@ -617,9 +631,16 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                 {(show.number_of_episodes || 0) > 0 && (
                                     <div>
                                         <span className="block text-gray-500 dark:text-gray-400 font-medium">{t('details.episodes')}</span>
-                                        <button onClick={handleEpisodesClick} className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-brand-primary transition-colors text-start">
-                                            {show.number_of_episodes}
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={handleEpisodesClick} className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-brand-primary transition-colors text-start">
+                                                {show.number_of_episodes}
+                                            </button>
+                                            {currentUser && show.media_type === 'tv' && (
+                                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
+                                                    {watchedCount} {t('common.watched', 'Watched')}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                                 {(show.runtime || 0) > 0 && !show.is_manga && (

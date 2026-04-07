@@ -197,6 +197,9 @@ const EpisodePage: React.FC<EpisodePageProps> = ({
                             episodeNumber={eNum}
                             isLoggedIn={!!currentUser}
                             onNavigate={onNavigate}
+                            totalEpisodes={show.number_of_episodes}
+                            showTitle={show.title}
+                            showImage={show.image_url}
                         />
                     </div>
                 )}

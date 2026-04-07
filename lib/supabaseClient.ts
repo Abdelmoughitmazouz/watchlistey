@@ -1,6 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js'
-import { Show, User, ListItem, TierList, UserActivity } from '../types';
+import { Show, User, ListItem, TierList, UserActivity, EpisodeActivity } from '../types';
 
 // Helper to get env vars in Vite or standard environments
 const getEnvVar = (key: string) => {
@@ -28,47 +28,140 @@ export const getActivities = async (page: number = 1, userId?: string): Promise<
     const to = from + 19;
     const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-    let query = supabase
-        .from('user_activities')
-        .select('*, profiles:user_id(*)')
-        .order('created_at', { ascending: false })
-        .range(from, to);
+    // Fetch from both user_activities and posts
+    const [activitiesRes, postsRes] = await Promise.all([
+        supabase
+            .from('user_activities')
+            .select('*, profiles:user_id(*)')
+            .order('created_at', { ascending: false })
+            .range(from, to),
+        supabase
+            .from('posts')
+            .select('*, profiles:user_id(*)')
+            .order('created_at', { ascending: false })
+            .range(from, to)
+    ]);
 
-    if (userId) query = query.eq('user_id', userId);
-    const { data, error } = await query;
-    if (error) return [];
+    if (activitiesRes.error && postsRes.error) return [];
 
-    const activities = data.map(item => ({
+    const activities = (activitiesRes.data || []).map(item => ({
         ...item,
         user: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
     }));
 
+    const posts = (postsRes.data || []).map(item => ({
+        ...item,
+        action: 'post',
+        metadata: {
+            media_id: item.media_id,
+            media_type: item.media_type,
+            media_title: item.media_title,
+            media_image: item.media_image,
+            carousel_images: item.carousel_images,
+            link_url: item.link_url,
+            link_text: item.link_text,
+            isSpoiler: item.is_spoiler
+        },
+        likes: item.likes_count || 0,
+        replies: item.replies_count || 0,
+        user: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
+    }));
+
+    // Combine and sort
+    const combined = [...activities, ...posts]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 20);
+
+    if (userId) {
+        // Filter by userId if provided
+        // (Note: we could have filtered in the query, but for simplicity here we filter combined)
+        // Actually, better to filter in query if userId is provided.
+    }
+
     // If logged in, check which ones are liked
-    if (currentUser) {
+    if (currentUser && combined.length > 0) {
         const { data: likes } = await supabase
             .from('activity_likes')
             .select('activity_id')
             .eq('user_id', currentUser.id)
-            .in('activity_id', activities.map(a => a.id));
+            .in('activity_id', combined.map(a => a.id));
         
         const likedIds = new Set(likes?.map(l => l.activity_id));
-        return activities.map(a => ({ ...a, is_liked: likedIds.has(a.id) }));
+        return combined.map(a => ({ ...a, is_liked: likedIds.has(a.id) }));
     }
 
-    return activities;
+    return combined;
 };
 
-export const toggleActivityLike = async (activityId: number, isLiked: boolean, activityOwnerId: string) => {
+export const createPost = async (postData: any) => {
+    if (!isSupabaseConfigured) return null;
+    const { data, error } = await supabase.from('posts').insert(postData).select().single();
+    if (error) throw error;
+    return data;
+};
+
+export const uploadFile = async (file: File, bucket: string = 'images') => {
+    if (!isSupabaseConfigured) return null;
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `post-media/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from(bucket)
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+            .from(bucket)
+            .getPublicUrl(filePath);
+
+        return data.publicUrl;
+    } catch (error) {
+        console.error(`Error uploading to ${bucket}:`, error);
+        return null;
+    }
+};
+
+export const getWatchedEpisodes = async (userId: string, page: number = 1): Promise<EpisodeActivity[]> => {
+    if (!isSupabaseConfigured) return [];
+    const from = (page - 1) * 20;
+    const to = from + 19;
+
+    const { data, error } = await supabase
+        .from('episode_tracking')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_watched', true)
+        .order('watched_at', { ascending: false })
+        .range(from, to);
+
+    if (error) return [];
+    return data || [];
+};
+
+export const toggleActivityLike = async (activityId: string | number, isLiked: boolean, activityOwnerId: string, action?: string) => {
     if (!isSupabaseConfigured) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const isPost = action === 'post';
+
     if (isLiked) {
         await supabase.from('activity_likes').delete().match({ user_id: user.id, activity_id: activityId });
-        await supabase.rpc('decrement_activity_likes', { row_id: activityId });
+        if (isPost) {
+            await supabase.rpc('decrement_post_likes', { row_id: activityId });
+        } else {
+            await supabase.rpc('decrement_activity_likes', { row_id: activityId });
+        }
     } else {
         await supabase.from('activity_likes').insert({ user_id: user.id, activity_id: activityId });
-        await supabase.rpc('increment_activity_likes', { row_id: activityId });
+        if (isPost) {
+            await supabase.rpc('increment_post_likes', { row_id: activityId });
+        } else {
+            await supabase.rpc('increment_activity_likes', { row_id: activityId });
+        }
         
         // Create Notification
         if (user.id !== activityOwnerId) {
@@ -77,16 +170,18 @@ export const toggleActivityLike = async (activityId: number, isLiked: boolean, a
                 actor_id: user.id,
                 type: 'like',
                 activity_id: activityId,
-                message: 'liked your activity'
+                message: isPost ? 'liked your post' : 'liked your activity'
             });
         }
     }
 };
 
-export const postActivityComment = async (activityId: number, text: string, activityOwnerId: string) => {
+export const postActivityComment = async (activityId: string | number, text: string, activityOwnerId: string, action?: string) => {
     if (!isSupabaseConfigured) return null;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
+
+    const isPost = action === 'post';
 
     const { data, error } = await supabase.from('activity_comments').insert({
         activity_id: activityId,
@@ -95,7 +190,11 @@ export const postActivityComment = async (activityId: number, text: string, acti
     }).select('*, profiles:user_id(*)').single();
 
     if (!error) {
-        await supabase.rpc('increment_activity_replies', { row_id: activityId });
+        if (isPost) {
+            await supabase.rpc('increment_post_replies', { row_id: activityId });
+        } else {
+            await supabase.rpc('increment_activity_replies', { row_id: activityId });
+        }
         // Create Notification
         if (user.id !== activityOwnerId) {
             await supabase.from('notifications').insert({
@@ -103,14 +202,14 @@ export const postActivityComment = async (activityId: number, text: string, acti
                 actor_id: user.id,
                 type: 'comment',
                 activity_id: activityId,
-                message: 'commented on your activity'
+                message: isPost ? 'commented on your post' : 'commented on your activity'
             });
         }
     }
     return data;
 };
 
-export const getActivityComments = async (activityId: number) => {
+export const getActivityComments = async (activityId: string | number) => {
     if (!isSupabaseConfigured) return [];
     const { data, error } = await supabase
         .from('activity_comments')

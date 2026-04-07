@@ -236,7 +236,8 @@ const App = () => {
                             action: action,
                             metadata: {
                                 title: show.title,
-                                image: show.image_url?.replace('https://image.tmdb.org/t/p/w500', '')
+                                image: show.image_url?.replace('https://image.tmdb.org/t/p/w500', ''),
+                                backdrop: show.backdrop_url?.replace('https://image.tmdb.org/t/p/original', '')?.replace('https://image.tmdb.org/t/p/w1280', '')
                             }
                         });
                      }

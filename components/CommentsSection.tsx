@@ -9,9 +9,9 @@ type InteractionAction = 'like' | 'dislike' | 'unlike' | 'undislike';
 
 interface CommentItemProps {
     comment: Comment;
-    onReply: (parentId: number, text: string) => void;
-    onInteract: (commentId: number, interaction: InteractionAction) => void;
-    onDelete: (commentId: number) => void;
+    onReply: (parentId: string | number, text: string) => void;
+    onInteract: (commentId: string | number, interaction: InteractionAction) => void;
+    onDelete: (commentId: string | number) => void;
     onViewUser: (user: User) => void;
     currentUser?: User;
     isChild?: boolean;
@@ -210,7 +210,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ showId, onViewUser, c
 
             if (error) throw error;
 
-            const commentMap = new Map<number, Comment>();
+            const commentMap = new Map<string | number, Comment>();
             const rootComments: Comment[] = [];
 
             if (data) {
@@ -263,7 +263,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ showId, onViewUser, c
         fetchComments();
     }, [fetchComments]);
 
-    const updateCommentState = (list: Comment[], targetId: number, updateFn: (comment: Comment) => Comment): Comment[] => {
+    const updateCommentState = (list: Comment[], targetId: string | number, updateFn: (comment: Comment) => Comment): Comment[] => {
         return list.map(comment => {
             if (comment.id === targetId) {
                 return updateFn(comment);
@@ -275,7 +275,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ showId, onViewUser, c
         });
     };
 
-    const handleInteraction = async (commentId: number, interaction: InteractionAction) => {
+    const handleInteraction = async (commentId: string | number, interaction: InteractionAction) => {
         const updater = (comment: Comment): Comment => {
             switch (interaction) {
                 case 'like': return { ...comment, likes: comment.likes + 1 };
@@ -305,7 +305,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ showId, onViewUser, c
         }
     };
 
-    const handleAddReply = async (parentId: number, text: string) => {
+    const handleAddReply = async (parentId: string | number, text: string) => {
         if (!currentUser || !isSupabaseConfigured) return;
         try {
             const { data, error } = await supabase.from('comments').insert({ show_id: showId, user_id: currentUser.id, parent_id: parentId, text: text }).select().single();
@@ -337,7 +337,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ showId, onViewUser, c
         }
     };
     
-    const handleDeleteComment = async (commentId: number) => {
+    const handleDeleteComment = async (commentId: string | number) => {
         if (!window.confirm("Are you sure you want to delete this comment?")) return;
         const removeRecursive = (list: Comment[]): Comment[] => {
             return list.filter(c => c.id !== commentId).map(c => ({ ...c, replies: c.replies ? removeRecursive(c.replies) : [] }));

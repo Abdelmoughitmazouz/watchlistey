@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Show, ListStatus, ListItem } from '../types';
 import { PlusIcon, VerifiedBadgeIcon, XIcon, FacebookIconV2, InstagramIcon, YouTubeIcon, SettingsIconV2 } from '../constants';
 import UserShowList from '../components/UserShowList';
+import UserEpisodeList from '../components/UserEpisodeList';
 import { Avatar } from '../components/Avatar';
 import { useTranslation } from 'react-i18next';
 import { getShowDetails, getPersonDetails, mapTMDBToShow } from '../lib/tmdb';
