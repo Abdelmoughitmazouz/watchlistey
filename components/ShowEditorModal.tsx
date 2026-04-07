@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-    XIcon, HeartIcon, TrashIcon, CalendarIcon, 
+    CloseIcon, HeartIcon, TrashIcon, CalendarIcon, 
     ChevronDownIcon, LockIcon, EyeIcon, EyeOffIcon,
     WatchingIcon, PlanningIcon, CompletedIcon, 
     RewatchingIcon, PausedIcon, DroppedIcon, CheckIcon
@@ -130,7 +130,7 @@ const ShowEditorModal: React.FC<ShowEditorModalProps> = ({
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="bg-[#0b1622] text-[#929292] w-full max-w-4xl rounded-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+                    className="bg-[#0f0f0f] text-[#929292] w-full max-w-4xl rounded-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
                 >
                     {/* Header with Banner */}
                     <div className="relative h-32 sm:h-40 w-full bg-gray-800 flex-shrink-0">
@@ -141,13 +141,13 @@ const ShowEditorModal: React.FC<ShowEditorModalProps> = ({
                                 className="w-full h-full object-cover opacity-30"
                             />
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#0b1622] via-[#0b1622]/80 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#0f0f0f] via-[#0f0f0f]/80 to-transparent" />
                         
                         <button 
                             onClick={onClose}
                             className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors z-20"
                         >
-                            <XIcon className="w-5 h-5 text-white/50 hover:text-white" />
+                            <CloseIcon className="w-5 h-5 text-white/50 hover:text-white" />
                         </button>
 
                         <div className="absolute inset-0 p-6 flex items-center gap-6">
@@ -167,7 +167,7 @@ const ShowEditorModal: React.FC<ShowEditorModalProps> = ({
                                 <button 
                                     onClick={handleSave}
                                     disabled={isSaving}
-                                    className="bg-[#3db4f2] hover:bg-[#3db4f2]/90 text-white px-6 py-2 rounded font-bold transition-colors disabled:opacity-50 text-sm"
+                                    className="bg-[#fbc500] hover:bg-[#fbc500]/90 text-black px-6 py-2 rounded font-bold transition-colors disabled:opacity-50 text-sm"
                                 >
                                     {isSaving ? 'Saving...' : 'Save'}
                                 </button>
@@ -182,12 +182,12 @@ const ShowEditorModal: React.FC<ShowEditorModalProps> = ({
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 {/* Status */}
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-[#3db4f2]/80 uppercase tracking-wider">Status</label>
+                                    <label className="text-xs font-bold text-[#fbc500]/80 uppercase tracking-wider">Status</label>
                                     <div className="relative">
                                         <select 
                                             value={status}
                                             onChange={(e) => setStatus(e.target.value as ListStatus)}
-                                            className="w-full bg-[#151f2e] border-none rounded py-2.5 px-4 text-sm text-white appearance-none focus:ring-1 focus:ring-[#3db4f2] outline-none"
+                                            className="w-full bg-[#1a1a1a] border-none rounded py-2.5 px-4 text-sm text-white appearance-none focus:ring-1 focus:ring-[#fbc500] outline-none"
                                         >
                                             <option value="" disabled>Status (unspecified)</option>
                                             {statusOptions.map(opt => (
@@ -200,7 +200,7 @@ const ShowEditorModal: React.FC<ShowEditorModalProps> = ({
 
                                 {/* Score */}
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-[#3db4f2]/80 uppercase tracking-wider">Score</label>
+                                    <label className="text-xs font-bold text-[#fbc500]/80 uppercase tracking-wider">Score</label>
                                     <div className="relative">
                                         <input 
                                             type="number"
@@ -209,14 +209,14 @@ const ShowEditorModal: React.FC<ShowEditorModalProps> = ({
                                             step="0.1"
                                             value={score}
                                             onChange={(e) => setScore(parseFloat(e.target.value))}
-                                            className="w-full bg-[#151f2e] border-none rounded py-2.5 px-4 text-sm text-white focus:ring-1 focus:ring-[#3db4f2] outline-none"
+                                            className="w-full bg-[#1a1a1a] border-none rounded py-2.5 px-4 text-sm text-white focus:ring-1 focus:ring-[#fbc500] outline-none"
                                         />
                                     </div>
                                 </div>
 
                                 {/* Progress */}
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-[#3db4f2]/80 uppercase tracking-wider">
+                                    <label className="text-xs font-bold text-[#fbc500]/80 uppercase tracking-wider">
                                         {show.media_type === 'tv' ? 'Episode Progress' : 'Watch Status'}
                                     </label>
                                     <div className="relative">
@@ -226,7 +226,7 @@ const ShowEditorModal: React.FC<ShowEditorModalProps> = ({
                                             max={totalEpisodes}
                                             value={progress}
                                             onChange={(e) => setProgress(parseInt(e.target.value))}
-                                            className="w-full bg-[#151f2e] border-none rounded py-2.5 px-4 text-sm text-white focus:ring-1 focus:ring-[#3db4f2] outline-none"
+                                            className="w-full bg-[#1a1a1a] border-none rounded py-2.5 px-4 text-sm text-white focus:ring-1 focus:ring-[#fbc500] outline-none"
                                         />
                                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">/ {totalEpisodes}</span>
                                     </div>
@@ -236,47 +236,47 @@ const ShowEditorModal: React.FC<ShowEditorModalProps> = ({
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 {/* Start Date */}
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-[#3db4f2]/80 uppercase tracking-wider">Start Date</label>
+                                    <label className="text-xs font-bold text-[#fbc500]/80 uppercase tracking-wider">Start Date</label>
                                     <input 
                                         type="date"
                                         value={startDate}
                                         onChange={(e) => setStartDate(e.target.value)}
-                                        className="w-full bg-[#151f2e] border-none rounded py-2.5 px-4 text-sm text-white focus:ring-1 focus:ring-[#3db4f2] outline-none [color-scheme:dark]"
+                                        className="w-full bg-[#1a1a1a] border-none rounded py-2.5 px-4 text-sm text-white focus:ring-1 focus:ring-[#fbc500] outline-none [color-scheme:dark]"
                                     />
                                 </div>
 
                                 {/* Finish Date */}
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-[#3db4f2]/80 uppercase tracking-wider">Finish Date</label>
+                                    <label className="text-xs font-bold text-[#fbc500]/80 uppercase tracking-wider">Finish Date</label>
                                     <input 
                                         type="date"
                                         value={finishDate}
                                         onChange={(e) => setFinishDate(e.target.value)}
-                                        className="w-full bg-[#151f2e] border-none rounded py-2.5 px-4 text-sm text-white focus:ring-1 focus:ring-[#3db4f2] outline-none [color-scheme:dark]"
+                                        className="w-full bg-[#1a1a1a] border-none rounded py-2.5 px-4 text-sm text-white focus:ring-1 focus:ring-[#fbc500] outline-none [color-scheme:dark]"
                                     />
                                 </div>
 
                                 {/* Rewatches */}
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-[#3db4f2]/80 uppercase tracking-wider">Total Rewatches</label>
+                                    <label className="text-xs font-bold text-[#fbc500]/80 uppercase tracking-wider">Total Rewatches</label>
                                     <input 
                                         type="number"
                                         min="0"
                                         value={rewatchCount}
                                         onChange={(e) => setRewatchCount(parseInt(e.target.value))}
-                                        className="w-full bg-[#151f2e] border-none rounded py-2.5 px-4 text-sm text-white focus:ring-1 focus:ring-[#3db4f2] outline-none"
+                                        className="w-full bg-[#1a1a1a] border-none rounded py-2.5 px-4 text-sm text-white focus:ring-1 focus:ring-[#fbc500] outline-none"
                                     />
                                 </div>
                             </div>
 
                             {/* Notes */}
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-[#3db4f2]/80 uppercase tracking-wider">Notes</label>
+                                <label className="text-xs font-bold text-[#fbc500]/80 uppercase tracking-wider">Notes</label>
                                 <textarea 
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     rows={4}
-                                    className="w-full bg-[#151f2e] border-none rounded py-3 px-4 text-sm text-white focus:ring-1 focus:ring-[#3db4f2] outline-none resize-none"
+                                    className="w-full bg-[#1a1a1a] border-none rounded py-3 px-4 text-sm text-white focus:ring-1 focus:ring-[#fbc500] outline-none resize-none"
                                     placeholder="Write your personal notes here..."
                                 />
                             </div>
@@ -285,7 +285,7 @@ const ShowEditorModal: React.FC<ShowEditorModalProps> = ({
                         {/* Sidebar Area */}
                         <div className="space-y-8 flex flex-col">
                             <div className="space-y-4">
-                                <h3 className="text-xs font-bold text-[#3db4f2]/80 uppercase tracking-wider">Custom Lists</h3>
+                                <h3 className="text-xs font-bold text-[#fbc500]/80 uppercase tracking-wider">Custom Lists</h3>
                                 <div className="border-t border-white/5 pt-4">
                                     {customLists.length === 0 ? (
                                         <p className="text-sm italic text-gray-500">No custom lists created</p>
@@ -293,8 +293,8 @@ const ShowEditorModal: React.FC<ShowEditorModalProps> = ({
                                         <div className="space-y-2">
                                             {customLists.map(list => (
                                                 <div key={list} className="flex items-center gap-2 text-sm text-white">
-                                                    <div className="w-4 h-4 rounded bg-[#3db4f2] flex items-center justify-center">
-                                                        <CheckIcon className="w-3 h-3 text-white" />
+                                                    <div className="w-4 h-4 rounded bg-[#fbc500] flex items-center justify-center">
+                                                        <CheckIcon className="w-3 h-3 text-black" />
                                                     </div>
                                                     {list}
                                                 </div>
@@ -306,14 +306,14 @@ const ShowEditorModal: React.FC<ShowEditorModalProps> = ({
 
                             <div className="space-y-4">
                                 <label className="flex items-center gap-3 cursor-pointer group">
-                                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${isPrivate ? 'bg-[#3db4f2]' : 'bg-[#151f2e] group-hover:bg-[#1e2a3b]'}`}>
+                                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${isPrivate ? 'bg-[#fbc500]' : 'bg-[#1a1a1a] group-hover:bg-[#2a2a2a]'}`}>
                                         <input 
                                             type="checkbox"
                                             checked={isPrivate}
                                             onChange={(e) => setIsPrivate(e.target.checked)}
                                             className="hidden"
                                         />
-                                        {isPrivate && <CheckIcon className="w-4 h-4 text-white" />}
+                                        {isPrivate && <CheckIcon className="w-4 h-4 text-black" />}
                                     </div>
                                     <span className="text-sm font-bold text-white/80 group-hover:text-white transition-colors">Private</span>
                                 </label>
