@@ -264,27 +264,55 @@ export const ensureProfileExists = async (user: any): Promise<User | null> => {
     const fullName = metadata.full_name || metadata.name || 'User';
     const avatarUrl = metadata.avatar_url || metadata.picture || '';
     
-    // Generate base username
-    let baseUsername = (metadata.preferred_username || metadata.user_name || fullName.split(' ')[0] || 'user').toLowerCase().replace(/[^a-z0-9]/g, '');
+    // Generate base username from Full Name (Real Name)
+    let baseUsername = fullName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    // If full name is empty or too short, try email prefix
+    if (baseUsername.length < 2 && user.email) {
+        baseUsername = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+    
+    // Final fallback
     if (!baseUsername) baseUsername = 'user';
+    
+    // Limit length to 20 chars before adding suffix
+    if (baseUsername.length > 20) baseUsername = baseUsername.substring(0, 20);
     
     let uniqueUsername = baseUsername;
     let isUnique = false;
-    let counter = 0;
     
-    while (!isUnique) {
-        const checkUsername = counter === 0 ? uniqueUsername : `${uniqueUsername}${counter}`;
-        const { data: existing } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('username', checkUsername)
-            .maybeSingle();
+    // Check if base is available
+    const { data: existingBase } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', uniqueUsername)
+        .maybeSingle();
+        
+    if (!existingBase) {
+        isUnique = true;
+    } else {
+        // If taken, append a random number
+        let attempts = 0;
+        while (!isUnique && attempts < 10) {
+            const randomSuffix = Math.floor(100 + Math.random() * 900); // 3 digit random
+            const checkUsername = `${baseUsername}${randomSuffix}`;
             
-        if (!existing) {
-            uniqueUsername = checkUsername;
-            isUnique = true;
-        } else {
-            counter++;
+            const { data: existingSuffix } = await supabase
+                .from('profiles')
+                .select('username')
+                .eq('username', checkUsername)
+                .maybeSingle();
+                
+            if (!existingSuffix) {
+                uniqueUsername = checkUsername;
+                isUnique = true;
+            }
+            attempts++;
+        }
+        
+        // If still not unique after 10 random attempts, use timestamp
+        if (!isUnique) {
+            uniqueUsername = `${baseUsername}${Date.now().toString().slice(-4)}`;
         }
     }
     
