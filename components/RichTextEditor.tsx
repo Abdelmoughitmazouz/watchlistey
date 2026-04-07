@@ -65,6 +65,19 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange, imag
 
     const [isUploading, setIsUploading] = useState(false);
 
+    // Sync content prop with editor (useful for resetting)
+    React.useEffect(() => {
+        if (editor && content !== editor.getHTML()) {
+            // Only update if the content is actually different to avoid cursor jumps
+            // Special case for empty content
+            if (content === '' && editor.getHTML() !== '<p></p>') {
+                editor.commands.setContent('');
+            } else if (content !== '' && content !== editor.getHTML()) {
+                editor.commands.setContent(content);
+            }
+        }
+    }, [content, editor]);
+
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0 || !editor) return;
