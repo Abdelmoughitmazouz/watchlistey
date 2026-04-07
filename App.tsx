@@ -265,7 +265,10 @@ const App = () => {
                     };
 
                     if (newProgress !== undefined && newProgress > prevProgress) {
-                        action = 'progress_updated';
+                        // Only use progress_updated if we're not completing the series
+                        if (status !== 'Completed') {
+                            action = 'progress_updated';
+                        }
                         metadata.progress = newProgress;
                         metadata.prev_progress = prevProgress;
                         metadata.episode_range = prevProgress + 1 === newProgress 
