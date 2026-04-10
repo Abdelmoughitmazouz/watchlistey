@@ -5,7 +5,6 @@ import ContentCarousel from '../components/ContentCarousel';
 import PromoVideo from '../components/PromoVideo';
 import ImageSlider from '../components/ImageSlider';
 import CommentsSection from '../components/CommentsSection';
-import AIAnalysis from '../components/AIAnalysis'; // Import new component
 import { Avatar } from '../components/Avatar';
 import ListStatusButton from '../components/ListStatusButton';
 import ShowEditorModal from '../components/ShowEditorModal';
@@ -581,13 +580,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                 />
                             )}
 
-                            {/* AI Insights Section */}
-                            {!isSeasonPage && show.media_type !== 'season' && (
-                                <div className="mt-8">
-                                    <AIAnalysis show={show} />
-                                </div>
-                            )}
-                       </div>
+                        </div>
                     </div>
                 </div>
 
