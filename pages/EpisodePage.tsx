@@ -101,7 +101,7 @@ const EpisodePage: React.FC<EpisodePageProps> = ({
     const handleNavigateEpisode = (offset: number) => {
         const nextEpisode = eNum + offset;
         if (nextEpisode < 1) return; 
-        onNavigate(`/tv/${showSlug}/season/${sNum}/episode/${nextEpisode}`);
+        onNavigate(`/tv/${showSlug}/Season_${sNum}/episode/${nextEpisode}`);
     };
 
     const handleSeriesClick = () => {
@@ -109,7 +109,7 @@ const EpisodePage: React.FC<EpisodePageProps> = ({
     }
 
     const handleSeasonClick = () => {
-        if (show) onNavigate(`/tv/${slugify(show.title)}/season/${sNum}`);
+        if (show) onNavigate(`/tv/${slugify(show.title)}/Season_${sNum}`);
     }
 
     const directors = episode.crew?.filter((c: any) => c.job === 'Director') || [];

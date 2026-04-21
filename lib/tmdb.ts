@@ -149,13 +149,20 @@ export const mapTMDBToShow = (item: any): Show => {
              character: c.character,
              profile_path: c.profile_path ? `${IMAGE_BASE_URL}${c.profile_path}` : null
         })) || [];
-        let galleryUrls = item.images?.posters?.map((img: any) => `${IMAGE_BASE_URL}${img.file_path}`).slice(0, 10);
+
+        let galleryUrls = item.images?.posters?.map((img: any) => `${IMAGE_BASE_URL}${img.file_path}`).slice(0, 10) || [];
+        
+        const videos = item.videos?.results || [];
+        const trailer = videos.find((v: any) => v.site === 'YouTube' && v.type === 'Trailer') 
+                     || videos.find((v: any) => v.site === 'YouTube' && v.type === 'Teaser');
+        const promoVideoUrl = trailer ? `https://www.youtube.com/embed/${trailer.key}?enablejsapi=1` : undefined;
+
         return {
             id: item.id,
             title: item.name || 'Season',
             description: item.overview || '',
             image_url: item.poster_path ? `${IMAGE_BASE_URL}${item.poster_path}` : 'https://via.placeholder.com/400x600?text=No+Poster',
-            backdrop_url: '',
+            backdrop_url: item.images?.backdrops?.[0] ? `${BACKDROP_BASE_URL}${item.images.backdrops[0].file_path}` : '',
             rating: item.vote_average || 0,
             year: item.air_date ? new Date(item.air_date).getFullYear() : 0,
             media_type: 'season',
@@ -176,7 +183,9 @@ export const mapTMDBToShow = (item: any): Show => {
             cast: seasonCast,
             gallery_urls: galleryUrls,
             external_ids: item.external_ids,
-            provider: 'tmdb'
+            promo_video_url: promoVideoUrl,
+            provider: 'tmdb',
+            parent_show_id: item.parent_show_id
         };
     }
 
@@ -380,9 +389,18 @@ export const getShowDetails = async (id: number, type: 'movie' | 'tv', fetchColl
 
 export const getSeasonDetails = async (tvId: number, seasonNumber: number, language: string = 'en-US'): Promise<Show | null> => {
     const endpoint = `/tv/${tvId}/season/${seasonNumber}`;
-    const data = await fetchTMDB(endpoint, { language });
+    const data = await fetchTMDB(endpoint, { append_to_response: 'credits,images,videos,external_ids', language });
     if (!data) return null;
-    return mapTMDBToShow({ ...data, media_type: 'season', id: data._id || data.id }); 
+    return mapTMDBToShow({ ...data, media_type: 'season', id: data._id || data.id, parent_show_id: tvId }); 
+};
+
+export const getSeasonByGlobalId = async (seasonId: number | string, language: string = 'en-US'): Promise<Show | null> => {
+    const endpoint = `/tv/season/${seasonId}`;
+    const data = await fetchTMDB(endpoint, { append_to_response: 'credits,images,videos,external_ids', language });
+    if (!data) return null;
+    // Note: This endpoint doesn't return the parent tv_id directly in a consistent way in some versions, 
+    // but usually it's in the response as part of a different field if needed.
+    return mapTMDBToShow({ ...data, media_type: 'season' });
 };
 
 export const getEpisodeDetails = async (tvId: number, seasonNumber: number, episodeNumber: number, language: string = 'en-US') => {

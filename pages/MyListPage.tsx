@@ -3,7 +3,7 @@ import { Show, ListStatus, ListItem } from '../types';
 import ListStatusButton from '../components/ListStatusButton';
 import { StarIcon, GridViewIcon, ListViewIcon, HeartIcon, TrashIcon, SearchIconV2, CloseIcon, CaretDownIcon } from '../constants';
 import ShowCard from '../components/ShowCard';
-import { slugify, getShowDetails, getPersonDetails, mapTMDBToShow } from '../lib/tmdb';
+import { slugify, getShowDetails, getPersonDetails, getSeasonByGlobalId, mapTMDBToShow } from '../lib/tmdb';
 import { useTranslation } from 'react-i18next';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
@@ -119,6 +119,9 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
                     if (type === 'person') {
                         const p = await getPersonDetails(id);
                         return p ? mapTMDBToShow({ ...p, media_type: 'person' }) : null;
+                    } else if (type === 'season') {
+                        const season = await getSeasonByGlobalId(id);
+                        return season;
                     } else if (type === 'anime' || type === 'tv') {
                         const tmdbShow = await getShowDetails(id, 'tv');
                         return tmdbShow;
@@ -194,15 +197,37 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
                 return s.media_type !== 'person';
             });
 
-            let showWithFavorite = show;
-            if (show && (userFavorites[show.id] || userList[show.id]?.is_favorite)) {
-                showWithFavorite = { ...show, is_favorite: true };
+            let mergedShow = show;
+            if (show) {
+                mergedShow = {
+                    ...show,
+                    is_favorite: !!userFavorites[show.id] || !!userList[show.id]?.is_favorite,
+                    parent_show_id: show.parent_show_id || item.parent_show_id,
+                    parent_show_title: show.parent_show_title || item.parent_show_title,
+                    season_number: show.season_number !== undefined ? show.season_number : item.season_number
+                };
+            } else if (item.title && item.poster_path) {
+                // Return a basic show object from item metadata if hydration is pending or failed
+                mergedShow = {
+                    id: showId,
+                    title: item.title,
+                    image_url: `https://image.tmdb.org/t/p/w500${item.poster_path}`,
+                    backdrop_url: `https://image.tmdb.org/t/p/w1280${item.backdrop_path || item.poster_path}`,
+                    description: '',
+                    rating: item.vote_average || 0,
+                    year: item.release_date ? parseInt(item.release_date.split('-')[0]) : 0,
+                    media_type: item.media_type,
+                    is_favorite: !!userFavorites[showId] || !!userList[showId]?.is_favorite,
+                    parent_show_id: item.parent_show_id,
+                    parent_show_title: item.parent_show_title,
+                    season_number: item.season_number
+                } as any;
             }
 
             return {
                 item,
-                show: showWithFavorite,
-                isLoading: !show
+                show: mergedShow,
+                isLoading: !mergedShow
             };
         });
 
@@ -232,6 +257,10 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
         const slug = slugify(show.title);
         if (show.media_type === 'person') {
             return `/person/${slug}`;
+        }
+        if (show.media_type === 'season' && show.parent_show_title && show.season_number !== undefined) {
+            const parentSlug = slugify(show.parent_show_title);
+            return `/tv/${parentSlug}/Season_${show.season_number}`;
         }
         const prefix = show.media_type === 'tv' ? '/tv/' : '/movie/';
         return `${prefix}${slug}`;

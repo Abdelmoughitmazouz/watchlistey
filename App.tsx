@@ -134,13 +134,52 @@ const App = () => {
                     if (!languageChanged && window.history.state && (window.history.state as Show).id) show = window.history.state as Show;
                     if (!show) {
                         const id = await getShowIdFromSlug(slug, type, route.lang);
-                        if (id) show = await getShowDetails(id, type, true, route.lang);
+                        if (id) {
+                            const seasonMatch = route.rest.match(/(?:season\/|Season_)(\d+)/i);
+                            if (seasonMatch && type === 'tv') {
+                                const seasonNumber = parseInt(seasonMatch[1]);
+                                const [seasonData, parentShow] = await Promise.all([
+                                    getSeasonDetails(id, seasonNumber, route.lang),
+                                    getShowDetails(id, 'tv', false, route.lang)
+                                ]);
+                                if (seasonData && parentShow) {
+                                    show = {
+                                        ...seasonData,
+                                        backdrop_url: seasonData.backdrop_url || parentShow.backdrop_url,
+                                        genres: parentShow.genres,
+                                        networks: parentShow.networks,
+                                        seasons: parentShow.seasons,
+                                        parent_show_title: parentShow.title,
+                                        is_anime: parentShow.is_anime,
+                                        maturity: parentShow.maturity,
+                                        format: parentShow.format,
+                                        status: parentShow.status,
+                                        original_language: parentShow.original_language,
+                                        popularity: parentShow.popularity,
+                                        vote_count: parentShow.vote_count
+                                    };
+                                } else {
+                                    show = seasonData;
+                                }
+                            } else {
+                                show = await getShowDetails(id, type, true, route.lang);
+                            }
+                        }
                     }
                     if (show) {
-                        const newSlug = slugify(show.title);
+                        let finalType = type;
+                        let finalSlug = slugify(show.title);
+                        let extraPath = '';
+
+                        if (show.media_type === 'season') {
+                            finalType = 'tv';
+                            finalSlug = slugify(show.parent_show_title || slug);
+                            extraPath = `/Season_${show.season_number}`;
+                        }
+
                         setExtraShows(prev => new Map(prev).set(`${show!.media_type}-${show!.id}`, show!));
                         setSelectedShow(show);
-                        const internalPath = `/${type}/${newSlug}`;
+                        const internalPath = `/${finalType}/${finalSlug}${extraPath}`;
                         const newPath = getLocalizedPath(internalPath, route.lang);
                         if (newPath !== pathname) {
                             window.history.replaceState(null, '', newPath);
@@ -205,6 +244,9 @@ const App = () => {
                         title: show?.title || existing.title, 
                         poster_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', '') || existing.poster_path, 
                         is_favorite: existing.is_favorite,
+                        parent_show_id: show?.parent_show_id || existing.parent_show_id,
+                        parent_show_title: show?.parent_show_title || existing.parent_show_title,
+                        season_number: show?.season_number !== undefined ? show.season_number : existing.season_number,
                         ...extraData
                     } as ListItem;
                 }
@@ -238,6 +280,11 @@ const App = () => {
                          payload.backdrop_path = show.backdrop_url?.replace('https://image.tmdb.org/t/p/w1280', '');
                          payload.vote_average = show.rating; 
                          payload.release_date = show.year ? `${show.year}-01-01` : null; 
+                         if (show.media_type === 'season') {
+                             payload.parent_show_id = show.parent_show_id;
+                             payload.parent_show_title = show.parent_show_title;
+                             payload.season_number = show.season_number;
+                         }
                      }
                      
                      // 1. Update List
@@ -401,7 +448,7 @@ const App = () => {
 
     const currentRoute = parsePath(pathname);
     const isShowDetail = !!(currentRoute.type && currentRoute.slug && ['movie','tv'].includes(currentRoute.type));
-    const isEpisodePage = /\/season\/[^/]+\/episode\/[^/]+$/.test(pathname);
+    const isEpisodePage = /(?:\/season\/|\/Season_)[^/]+\/episode\/[^/]+$/i.test(pathname);
     const isHome = !currentRoute.rest;
     const hasHero = isHome || isShowDetail || isEpisodePage;
     const isBuilderRoute = currentRoute.rest === 'lists/new' || (currentRoute.rest.startsWith('lists/') && currentRoute.rest.split('/').length >= 2);
@@ -461,7 +508,7 @@ const App = () => {
         if (currentRoute.type === 'person' && currentRoute.slug) return <PersonPage personId={currentRoute.slug} onNavigate={handleNavigate} onBack={() => window.history.back()} userList={user?.list || {}} userFavorites={user?.favorites} userCharacters={user?.characters} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} />;
         if (currentRoute.type === 'genre' && currentRoute.slug) return <GenrePage genreId={currentRoute.slug} onNavigate={handleNavigate} onBack={() => window.history.back()} userList={user?.list || {}} userFavorites={user?.favorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} />;
         if (currentRoute.type === 'network' && currentRoute.slug) return <NetworkPage networkId={currentRoute.slug} onNavigate={handleNavigate} onBack={() => window.history.back()} userList={user?.list || {}} userFavorites={user?.favorites} userCharacters={user?.characters} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} />;
-        const episodeMatch = path.match(/^tv\/([^/]+)\/season\/([^/]+)\/episode\/([^/]+)$/);
+        const episodeMatch = path.match(/^tv\/([^/]+)\/(?:season\/|Season_)([^/]+)\/episode\/([^/]+)$/i);
         if (episodeMatch) return <EpisodePage showSlug={episodeMatch[1]} seasonNumber={episodeMatch[2]} episodeNumber={episodeMatch[3]} onBack={() => window.history.back()} onNavigate={handleNavigate} userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} />;
         if (path.endsWith('/cast')) { if (selectedShow) return <CastPage show={selectedShow} onBack={() => window.history.back()} onNavigate={handleNavigate} userCharacters={user?.characters} handleUpdateListStatus={handleUpdateListStatus} />; }
         if (selectedShow && (currentRoute.type && currentRoute.slug)) return <ShowDetail show={selectedShow} allShows={[...movies, ...tvShows]} onBack={() => handleNavigate('/')} onNavigate={handleNavigate} onUpdateShow={setSelectedShow} userList={user?.list || {}} userFavorites={user?.favorites} userCharacters={user?.characters} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} currentUser={user} notifications={notifications} />;

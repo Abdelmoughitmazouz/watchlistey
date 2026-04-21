@@ -35,7 +35,7 @@ const ShowCard: React.FC<ShowCardProps> = ({ show, onShowClick, userList, userFa
             const parentSlug = slugify(show.parent_show_title);
             // Seasons don't have a direct top-level localized route usually, handled via TV path
             // For simplicity, let's treat season links as extensions of the show link
-            internalPath = `/tv/${parentSlug}/season/${show.season_number}`;
+            internalPath = `/tv/${parentSlug}/Season_${show.season_number}`;
         } else {
             // Revert all anime/manga back to their TMDB source types (tv or movie)
             let type = show.media_type === 'tv' ? 'tv' : 'movie';

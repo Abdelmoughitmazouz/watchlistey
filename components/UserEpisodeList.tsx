@@ -128,7 +128,7 @@ const UserEpisodeList: React.FC<UserEpisodeListProps> = ({ userId, onNavigate })
                     <div 
                         key={`${ep.id}-${idx}`} 
                         className="flex items-center gap-4 p-4 bg-white dark:bg-[#1e1e1e] rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-primary dark:hover:border-brand-primary transition-colors cursor-pointer group"
-                        onClick={() => onNavigate(`/tv/${ep.showSlug}/season/${ep.season_number}/episode/${ep.episode_number}`)}
+                        onClick={() => onNavigate(`/tv/${ep.showSlug}/Season_${ep.season_number}/episode/${ep.episode_number}`)}
                     >
                         {/* Image */}
                         <div className="relative w-32 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800">
