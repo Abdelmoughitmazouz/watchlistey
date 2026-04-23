@@ -3,7 +3,7 @@ import { Show, ListStatus, ListItem } from '../types';
 import ListStatusButton from '../components/ListStatusButton';
 import { StarIcon, GridViewIcon, ListViewIcon, HeartIcon, TrashIcon, SearchIconV2, CloseIcon, CaretDownIcon } from '../constants';
 import ShowCard from '../components/ShowCard';
-import { slugify, getShowDetails, getPersonDetails, getSeasonByGlobalId, mapTMDBToShow } from '../lib/tmdb';
+import { slugify, getShowDetails, getPersonDetails, mapTMDBToShow } from '../lib/tmdb';
 import { useTranslation } from 'react-i18next';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
@@ -88,11 +88,11 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
         const hydrate = async () => {
             // Identify items needing hydration (not in props.shows AND not in state.hydratedShows)
             const needed = rawListItems.filter(item => {
-                const showId = item.show_id || (item as any).person_id;
+                const showId = Number(item.show_id || (item as any).person_id);
                 if (!showId) return false;
 
-                const inProps = shows.some(s => s.id === showId);
-                const inHydrated = hydratedShows.some(s => s.id === showId);
+                const inProps = shows.some(s => Number(s.id) === showId);
+                const inHydrated = hydratedShows.some(s => Number(s.id) === showId);
                 return !inProps && !inHydrated;
             });
 
@@ -100,7 +100,7 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
 
             // Deduplicate requests
             const uniqueNeeded = Array.from(new Set(needed.map(i => {
-                const id = i.show_id || (i as any).person_id;
+                const id = Number(i.show_id || (i as any).person_id);
                 // Force type if missing and coming from character list
                 const type = i.media_type || ((i as any)._source === 'characters' ? 'person' : 'tv');
                 const title = i.title || '';
@@ -116,18 +116,16 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
 
             const fetched = await Promise.all(batch.map(async ({ id, type, title, status, added_at }) => {
                 try {
+                    const numId = Number(id);
                     if (type === 'person') {
-                        const p = await getPersonDetails(id);
+                        const p = await getPersonDetails(numId);
                         return p ? mapTMDBToShow({ ...p, media_type: 'person' }) : null;
-                    } else if (type === 'season') {
-                        const season = await getSeasonByGlobalId(id);
-                        return season;
                     } else if (type === 'anime' || type === 'tv') {
-                        const tmdbShow = await getShowDetails(id, 'tv');
+                        const tmdbShow = await getShowDetails(numId, 'tv');
                         return tmdbShow;
                     } else {
                         // Movie
-                        let show = await getShowDetails(id, type);
+                        let show = await getShowDetails(numId, type as 'movie' | 'tv');
                         return show;
                     }
                 } catch (e) { return null; }
@@ -189,45 +187,23 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
 
         let processed = displayItems.map(item => {
             // Find the loaded show details
-            const showId = item.show_id || (item as any).person_id;
+            const showId = Number(item.show_id || (item as any).person_id);
             const show = availableShows.find(s => {
-                if (s.id !== showId) return false;
+                if (Number(s.id) !== showId) return false;
                 const itemType = item.media_type || (item._source === 'characters' ? 'person' : null);
                 if (itemType) return s.media_type === itemType;
                 return s.media_type !== 'person';
             });
 
-            let mergedShow = show;
-            if (show) {
-                mergedShow = {
-                    ...show,
-                    is_favorite: !!userFavorites[show.id] || !!userList[show.id]?.is_favorite,
-                    parent_show_id: show.parent_show_id || item.parent_show_id,
-                    parent_show_title: show.parent_show_title || item.parent_show_title,
-                    season_number: show.season_number !== undefined ? show.season_number : item.season_number
-                };
-            } else if (item.title && item.poster_path) {
-                // Return a basic show object from item metadata if hydration is pending or failed
-                mergedShow = {
-                    id: showId,
-                    title: item.title,
-                    image_url: `https://image.tmdb.org/t/p/w500${item.poster_path}`,
-                    backdrop_url: `https://image.tmdb.org/t/p/w1280${item.backdrop_path || item.poster_path}`,
-                    description: '',
-                    rating: item.vote_average || 0,
-                    year: item.release_date ? parseInt(item.release_date.split('-')[0]) : 0,
-                    media_type: item.media_type,
-                    is_favorite: !!userFavorites[showId] || !!userList[showId]?.is_favorite,
-                    parent_show_id: item.parent_show_id,
-                    parent_show_title: item.parent_show_title,
-                    season_number: item.season_number
-                } as any;
+            let showWithFavorite = show;
+            if (show && (userFavorites[show.id] || userList[show.id]?.is_favorite)) {
+                showWithFavorite = { ...show, is_favorite: true };
             }
 
             return {
                 item,
-                show: mergedShow,
-                isLoading: !mergedShow
+                show: showWithFavorite,
+                isLoading: !show
             };
         });
 
@@ -257,10 +233,6 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
         const slug = slugify(show.title);
         if (show.media_type === 'person') {
             return `/person/${slug}`;
-        }
-        if (show.media_type === 'season' && show.parent_show_title && show.season_number !== undefined) {
-            const parentSlug = slugify(show.parent_show_title);
-            return `/tv/${parentSlug}/Season_${show.season_number}`;
         }
         const prefix = show.media_type === 'tv' ? '/tv/' : '/movie/';
         return `${prefix}${slug}`;

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Show, User, ListStatus, ListItem, CastMember, Episode, AppNotification, Subscription } from '../types';
-import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, StarIcon, ArrowRightIcon, XIcon, FacebookIconV2, InstagramIcon, LinkIcon, UserPlaceholderIcon, CaretDownIcon, CalendarIcon, SettingsIconV2, CheckIcon } from '../constants';
+import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, StarIcon, ArrowRightIcon, XIcon, FacebookIconV2, InstagramIcon, LinkIcon, UserPlaceholderIcon, CaretDownIcon, CalendarIcon, SettingsIconV2 } from '../constants';
 import ContentCarousel from '../components/ContentCarousel';
 import PromoVideo from '../components/PromoVideo';
 import ImageSlider from '../components/ImageSlider';
@@ -39,57 +39,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
     const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
     const [seasonEpisodes, setSeasonEpisodes] = useState<Episode[]>([]);
     const [loadingEpisodes, setLoadingEpisodes] = useState(false);
-    const [watchedEpisodes, setWatchedEpisodes] = useState<Set<number>>(new Set());
     const [isEditorOpen, setIsEditorOpen] = useState(false);
-
-    const isSeasonPage = show.media_type === 'season';
-    const displayEpisodes = isSeasonPage ? (show.episodes || []) : seasonEpisodes;
-
-    useEffect(() => {
-        const fetchWatchedEpisodes = async () => {
-            if (!currentUser || !show.id) return;
-            const currentSeasonNum = isSeasonPage ? show.season_number : selectedSeason;
-            if (currentSeasonNum === null) return;
-
-            if (isSupabaseConfigured) {
-                const { data, error } = await supabase
-                    .from('episode_tracking')
-                    .select('episode_number')
-                    .eq('user_id', currentUser.id)
-                    .eq('show_id', isSeasonPage ? (show.parent_show_id || show.id) : show.id)
-                    .eq('season_number', currentSeasonNum)
-                    .eq('is_watched', true);
-                if (!error && data) {
-                    setWatchedEpisodes(new Set(data.map(d => d.episode_number)));
-                }
-            }
-        };
-        fetchWatchedEpisodes();
-    }, [show.id, selectedSeason, currentUser?.id, isSeasonPage, show.season_number]);
-
-    const handleToggleEpisodeWatched = async (e: React.MouseEvent, episodeNumber: number) => {
-        e.stopPropagation();
-        if (!currentUser || !show.id) return;
-        const currentSeasonNum = isSeasonPage ? show.season_number : selectedSeason;
-        if (currentSeasonNum === null) return;
-
-        const isCurrentlyWatched = watchedEpisodes.has(episodeNumber);
-        const newWatchedEpisodes = new Set(watchedEpisodes);
-        if (isCurrentlyWatched) newWatchedEpisodes.delete(episodeNumber);
-        else newWatchedEpisodes.add(episodeNumber);
-        setWatchedEpisodes(newWatchedEpisodes);
-
-        if (isSupabaseConfigured) {
-            await supabase.from('episode_tracking').upsert({
-                user_id: currentUser.id,
-                show_id: isSeasonPage ? (show.parent_show_id || show.id) : show.id,
-                season_number: currentSeasonNum,
-                episode_number: episodeNumber,
-                is_watched: !isCurrentlyWatched,
-                watched_at: !isCurrentlyWatched ? new Date().toISOString() : null
-            }, { onConflict: 'user_id, show_id, season_number, episode_number' });
-        }
-    };
 
     useEffect(() => {
         setShow(initialShow);
@@ -264,11 +214,9 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
 
     useEffect(() => {
         const fetchRecommendations = async () => {
-            const targetId = isSeasonPage ? (show.parent_show_id || show.id) : show.id;
-            const targetType = isSeasonPage ? 'tv' : show.media_type;
-            if (targetType === 'movie' || targetType === 'tv') {
+            if (show.media_type === 'movie' || show.media_type === 'tv') {
                 try {
-                    const recs = await getRecommendations(targetId, targetType, i18n.language);
+                    const recs = await getRecommendations(show.id, show.media_type, i18n.language);
                     setRecommendations(recs);
                 } catch (e) {
                     console.error("Failed to fetch recommendations", e);
@@ -276,7 +224,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
             }
         };
         fetchRecommendations();
-    }, [show.id, show.media_type, i18n.language, isSeasonPage, show.parent_show_id]);
+    }, [show.id, show.media_type, i18n.language]);
 
     const moreLikeThis = (show as any).recommendations || (recommendations.length > 0 ? recommendations : allShows.filter(s => s.id !== show.id && (s.genres?.some(g => show.genres?.includes(g)) || s.year === show.year)).slice(0, 12));
 
@@ -418,6 +366,8 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
         is_anime: show.is_anime
     } as Show)) || [];
 
+    const isSeasonPage = show.media_type === 'season';
+
     const handleBackToParent = () => {
         if (show.parent_show_id) {
              const slug = slugify(show.parent_show_title || 'show');
@@ -436,7 +386,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
     const navigateToSeason = (seasonNum: number) => {
         if (show.parent_show_id) {
             const slug = slugify(show.parent_show_title || 'show');
-            onNavigate(`/tv/${slug}/Season_${seasonNum}`);
+            onNavigate(`/tv/${slug}/season/${seasonNum}`);
         }
     }
 
@@ -471,7 +421,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
     const handleEpisodeClick = (episode: Episode) => {
         const slug = slugify(isSeasonPage ? show.parent_show_title || show.title : show.title);
         const seasonNum = isSeasonPage ? show.season_number : selectedSeason;
-        onNavigate(`/tv/${slug}/Season_${seasonNum}/episode/${episode.episode_number}`);
+        onNavigate(`/tv/${slug}/season/${seasonNum}/episode/${episode.episode_number}`);
     };
 
     return (
@@ -807,13 +757,11 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
 
                         {generateSeoParagraph()}
 
-                        {( (show.media_type === 'tv' && !isSeasonPage) || (isSeasonPage && displayEpisodes.length > 0) ) && !show.is_manga && (
-                            <div className="mb-12 animate-fade-in text-brand-primary">
+                        {show.media_type === 'tv' && !show.is_manga && !isSeasonPage && (
+                            <div className="mb-12 animate-fade-in">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                        {isSeasonPage ? t('details.episodes') : t('details.episodes')}
-                                    </h2>
-                                    {show.seasons && show.seasons.length > 0 && !isSeasonPage && (
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('details.episodes')}</h2>
+                                    {show.seasons && show.seasons.length > 0 && (
                                         <div className="relative">
                                             <select value={selectedSeason || ''} onChange={(e) => setSelectedSeason(parseInt(e.target.value))} className="appearance-none bg-gray-100 dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white py-2 ps-4 pe-10 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer">
                                                 {show.seasons.map(season => (
@@ -826,8 +774,8 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                 </div>
                                 {loadingEpisodes ? <div className="py-12 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div></div> : (
                                     <div className="space-y-4">
-                                        {displayEpisodes.length > 0 ? (
-                                            displayEpisodes.map(episode => (
+                                        {seasonEpisodes.length > 0 ? (
+                                            seasonEpisodes.map(episode => (
                                                 <div key={episode.id} className="group flex flex-col md:flex-row gap-4 items-start p-4 rounded-xl bg-gray-50 dark:bg-[#181818] border border-gray-200 dark:border-gray-800 transition-colors hover:border-brand-primary/50 dark:hover:border-brand-primary/30 cursor-pointer" onClick={() => handleEpisodeClick(episode)}>
                                                     <div className="flex-shrink-0 w-full md:w-48 aspect-video rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 relative">
                                                         {episode.still_path ? <img src={episode.still_path.startsWith('http') ? episode.still_path : `https://image.tmdb.org/t/p/w500${episode.still_path}`} alt={episode.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><span className="text-xs">No Image</span></div>}
@@ -836,35 +784,8 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                                     </div>
                                                     <div className="flex-1 min-w-0 w-full">
                                                         <div className="flex justify-between items-start gap-2 mb-1">
-                                                            <div className="flex-1 min-w-0">
-                                                                <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-brand-primary transition-colors">
-                                                                    <span className="text-gray-500 dark:text-gray-500 me-2 font-mono text-sm">E{episode.episode_number}</span>
-                                                                    {episode.name}
-                                                                </h3>
-                                                                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                                    <span>{episode.air_date ? new Date(episode.air_date).toLocaleDateString() : 'TBA'}</span>
-                                                                    {episode.vote_average > 0 && (
-                                                                        <div className="flex items-center gap-1 text-yellow-500">
-                                                                            <StarIcon className="w-3 h-3" />
-                                                                            <span>{episode.vote_average.toFixed(1)}</span>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                                                <button
-                                                                    onClick={(e) => handleToggleEpisodeWatched(e, episode.episode_number)}
-                                                                    className={`p-2 rounded-lg border transition-all duration-200 ${
-                                                                        watchedEpisodes.has(episode.episode_number)
-                                                                            ? 'bg-brand-primary border-brand-primary text-black'
-                                                                            : 'bg-white/50 dark:bg-black/50 border-gray-200 dark:border-gray-800 text-gray-400 hover:border-brand-primary hover:text-brand-primary'
-                                                                    }`}
-                                                                    title={watchedEpisodes.has(episode.episode_number) ? "Mark as unwatched" : "Mark as watched"}
-                                                                >
-                                                                    <CheckIcon className="w-4 h-4" />
-                                                                </button>
-                                                                <ListStatusButton showId={episode.id} userList={userList} handleUpdateListStatus={handleUpdateListStatus} isIconOnly show={{ ...show, id: episode.id, title: episode.name, media_type: 'tv', image_url: episode.still_path ? `https://image.tmdb.org/t/p/w500${episode.still_path}` : '', year: episode.air_date ? new Date(episode.air_date).getFullYear() : 0 }} transparent align="right" />
-                                                            </div>
+                                                            <div><h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-brand-primary transition-colors"><span className="text-gray-500 dark:text-gray-500 me-2 font-mono text-sm">E{episode.episode_number}</span>{episode.name}</h3><div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1"><span>{episode.air_date ? new Date(episode.air_date).toLocaleDateString() : 'TBA'}</span>{episode.vote_average > 0 && <div className="flex items-center gap-1 text-yellow-500"><StarIcon className="w-3 h-3" /><span>{episode.vote_average.toFixed(1)}</span></div>}</div></div>
+                                                            <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}><ListStatusButton showId={episode.id} userList={userList} handleUpdateListStatus={handleUpdateListStatus} isIconOnly show={{ ...show, id: episode.id, title: episode.name, media_type: 'tv', image_url: episode.still_path ? `https://image.tmdb.org/t/p/w500${episode.still_path}` : '', year: episode.air_date ? new Date(episode.air_date).getFullYear() : 0 }} transparent align="right" /></div>
                                                         </div>
                                                         <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">{episode.overview || "No overview available for this episode."}</p>
                                                     </div>
@@ -877,22 +798,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                         )}
 
                         {show.relations && show.relations.length > 0 && <ContentCarousel title={show.is_anime ? `${t('hero.seasons')} & ${t('details.related_media')}` : t('details.related_media')} shows={show.relations} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} />}
-                        {!show.is_manga && seasonShows.length > 1 && (
-                            <div className="mt-8">
-                                <ContentCarousel 
-                                    title={t('hero.seasons')} 
-                                    shows={seasonShows} 
-                                    onShowClick={(s) => {
-                                        const parentTitle = show.media_type === 'season' ? show.parent_show_title : show.title;
-                                        onNavigate(`/tv/${slugify(parentTitle || 'show')}/Season_${s.season_number}`);
-                                    }} 
-                                    userList={userList} 
-                                    userFavorites={userFavorites} 
-                                    handleUpdateListStatus={handleUpdateListStatus} 
-                                    handleToggleFavorite={handleToggleFavorite} 
-                                />
-                            </div>
-                        )}
+                        {!isSeasonPage && !show.is_manga && seasonShows.length > 0 && <div className="mt-8"><ContentCarousel title={t('hero.seasons')} shows={seasonShows} onShowClick={(s) => onNavigate(`/tv/${slugify(show.title)}/season/${s.season_number}`)} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} /></div>}
                         {show.promo_video_url && <PromoVideo videoUrl={show.promo_video_url} title={show.title} />}
                         {show.gallery_urls && show.gallery_urls.length > 0 && <ImageSlider images={show.gallery_urls} title={show.title} />}
                     </div>

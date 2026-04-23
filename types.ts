@@ -21,9 +21,6 @@ export interface ListItem {
   backdrop_path?: string;
   vote_average?: number;
   release_date?: string;
-  parent_show_id?: number;
-  parent_show_title?: string;
-  season_number?: number;
 }
 
 export interface UserActivity {

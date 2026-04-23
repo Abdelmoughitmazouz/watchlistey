@@ -239,11 +239,20 @@ export const getProfileById = async (userId: string): Promise<User | null> => {
     const { data: favData } = await supabase.from('favorites').select('*').eq('user_id', userId);
     const { data: charData } = await supabase.from('characters').select('*').eq('user_id', userId);
     const list: Record<number, ListItem> = {};
-    listData?.forEach((item: any) => list[item.show_id] = item);
+    listData?.forEach((item: any) => {
+        const sid = typeof item.show_id === 'string' ? parseInt(item.show_id, 10) : item.show_id;
+        list[sid] = { ...item, show_id: sid };
+    });
     const favorites: Record<number, ListItem> = {};
-    favData?.forEach((item: any) => favorites[item.show_id] = item);
+    favData?.forEach((item: any) => {
+        const sid = typeof item.show_id === 'string' ? parseInt(item.show_id, 10) : item.show_id;
+        favorites[sid] = { ...item, show_id: sid };
+    });
     const characters: Record<number, ListItem> = {};
-    charData?.forEach((item: any) => { characters[item.person_id] = { ...item, id: item.id, show_id: item.person_id, media_type: 'person', title: item.name, poster_path: item.profile_path, status: 'Favorite', added_at: item.added_at }; });
+    charData?.forEach((item: any) => { 
+        const pid = typeof item.person_id === 'string' ? parseInt(item.person_id, 10) : item.person_id;
+        characters[pid] = { ...item, id: item.id, show_id: pid, person_id: pid, media_type: 'person', title: item.name, poster_path: item.profile_path, status: 'Favorite', added_at: item.added_at }; 
+    });
     return { ...data, list, favorites, characters };
 };
 
@@ -344,7 +353,6 @@ export const ensureProfileExists = async (user: any): Promise<User | null> => {
             uniqueUsername = `${baseUsername}${Date.now().toString().slice(-4)}`;
         }
     }
-
     const avatarUrl = metadataAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uniqueUsername}`;
     
     const { data: newProfile, error: insertError } = await supabase
@@ -377,11 +385,20 @@ export const getProfileByUsername = async (username: string): Promise<User | nul
     const { data: favData } = await supabase.from('favorites').select('*').eq('user_id', data.id);
     const { data: charData } = await supabase.from('characters').select('*').eq('user_id', data.id);
     const list: Record<number, ListItem> = {};
-    listData?.forEach((item: any) => list[item.show_id] = item);
+    listData?.forEach((item: any) => {
+        const sid = typeof item.show_id === 'string' ? parseInt(item.show_id, 10) : item.show_id;
+        list[sid] = { ...item, show_id: sid };
+    });
     const favorites: Record<number, ListItem> = {};
-    favData?.forEach((item: any) => favorites[item.show_id] = item);
+    favData?.forEach((item: any) => {
+        const sid = typeof item.show_id === 'string' ? parseInt(item.show_id, 10) : item.show_id;
+        favorites[sid] = { ...item, show_id: sid };
+    });
     const characters: Record<number, ListItem> = {};
-    charData?.forEach((item: any) => { characters[item.person_id] = { ...item, id: item.id, show_id: item.person_id, media_type: 'person', title: item.name, poster_path: item.profile_path, status: 'Favorite', added_at: item.added_at }; });
+    charData?.forEach((item: any) => { 
+        const pid = typeof item.person_id === 'string' ? parseInt(item.person_id, 10) : item.person_id;
+        characters[pid] = { ...item, id: item.id, show_id: pid, person_id: pid, media_type: 'person', title: item.name, poster_path: item.profile_path, status: 'Favorite', added_at: item.added_at }; 
+    });
     return { ...data, list, favorites, characters };
 };
 

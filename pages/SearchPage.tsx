@@ -228,16 +228,9 @@ const SearchPage: React.FC<SearchPageProps> = ({ onNavigate, onBack, userList, u
         if (show.media_type === 'person') {
             onNavigate(`/person/${slug}`, show);
         } else {
+            // Remove anime prefix logic, titles now always use /tv/ or /movie/ based on their TMDB source
             const prefix = show.media_type === 'tv' ? '/tv/' : '/movie/';
-            
-            // Smart redirection for season search queries (e.g., "From Season 1")
-            const seasonSearchMatch = query.match(/Season\s+(\d+)/i);
-            if (show.media_type === 'tv' && seasonSearchMatch) {
-                const seasonNum = seasonSearchMatch[1];
-                onNavigate(`${prefix}${slug}/Season_${seasonNum}`, show);
-            } else {
-                onNavigate(`${prefix}${slug}`, show);
-            }
+            onNavigate(`${prefix}${slug}`, show);
         }
     };
 
