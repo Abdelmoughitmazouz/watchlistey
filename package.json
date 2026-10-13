@@ -2,7 +2,6 @@
   "name": "watchlistey",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,7 +10,7 @@
   },
   "dependencies": {
     "@google/genai": "latest",
-    "@supabase/supabase-js": "2.45.1",
+    "@supabase/supabase-js": "^2.0.0",
     "@tiptap/extension-image": "^3.20.4",
     "@tiptap/extension-link": "^3.20.4",
     "@tiptap/extension-placeholder": "^3.20.4",
