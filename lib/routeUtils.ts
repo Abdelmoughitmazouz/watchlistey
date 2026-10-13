@@ -26,7 +26,7 @@ Object.keys(PATH_TRANSLATIONS).forEach(lang => {
 
 export interface ParsedRoute {
     lang: string;
-    type?: 'movie' | 'tv' | 'person' | 'user' | 'genre' | 'network';
+    type?: 'movie' | 'tv' | 'person' | 'user' | 'genre' | 'network' | 'ratings';
     slug?: string;
     rest: string;
     isLocalized: boolean;
@@ -50,7 +50,7 @@ export const parsePath = (pathname: string): ParsedRoute => {
     if (segment) {
         if (REVERSE_PATH_TRANSLATIONS[lang] && REVERSE_PATH_TRANSLATIONS[lang][segment]) {
             type = REVERSE_PATH_TRANSLATIONS[lang][segment];
-        } else if (['movie', 'tv', 'person', 'genre', 'network', 'u'].includes(segment)) {
+        } else if (['movie', 'tv', 'person', 'genre', 'network', 'u', 'ratings'].includes(segment)) {
             type = segment === 'u' ? 'user' : segment;
         } else if (segment === 'user') {
              type = 'user';
@@ -83,6 +83,8 @@ export const getLocalizedPath = (path: string, targetLang: string): string => {
 
         if (type === 'user') {
             newPath = `u/${slug}`;
+        } else if (type === 'ratings') {
+            newPath = `ratings/${slug}`;
         } else {
             // Lookup the localized name for 'movie', 'person', 'genre', etc.
             const localizedSegment = PATH_TRANSLATIONS[targetLang]?.[type] || type;

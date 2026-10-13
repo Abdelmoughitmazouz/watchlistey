@@ -14,6 +14,9 @@ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import EpisodeCountdown from '../components/EpisodeCountdown';
 import NextEpisodeCard from '../components/NextEpisodeCard';
 import { useTranslation } from 'react-i18next';
+import { EpisodeRatingsGraph } from '../components/EpisodeRatingsGraph';
+import { fetchSeriesEpisodesRatings } from '../lib/episodeRatingsService';
+import { SeasonRatingsData } from '../types';
 
 interface ShowDetailProps {
     show: Show;
@@ -31,9 +34,27 @@ interface ShowDetailProps {
     handleToggleEpisode?: (showId: number, seasonNumber: number, episodeNumber: number, isWatched: boolean) => Promise<boolean>;
     notifications?: AppNotification[];
     subscriptions?: Subscription[];
+    initialTab?: 'episodes' | 'ratings-graph';
 }
 
-const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, onBack, onNavigate, onUpdateShow, userList, userFavorites, userCharacters = {}, handleUpdateListStatus, currentUser, handleToggleFavorite, onRegisterNotification, handleToggleEpisode, notifications, subscriptions = [] }) => {
+const ShowDetail: React.FC<ShowDetailProps> = ({
+    show: initialShow,
+    allShows,
+    onBack,
+    onNavigate,
+    onUpdateShow,
+    userList,
+    userFavorites,
+    userCharacters = {},
+    handleUpdateListStatus,
+    currentUser,
+    handleToggleFavorite,
+    onRegisterNotification,
+    handleToggleEpisode,
+    notifications,
+    subscriptions = [],
+    initialTab = 'episodes'
+}) => {
     const { t, i18n } = useTranslation();
     const [show, setShow] = useState(initialShow);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
@@ -41,17 +62,38 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
     const [seasonEpisodes, setSeasonEpisodes] = useState<Episode[]>([]);
     const [loadingEpisodes, setLoadingEpisodes] = useState(false);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
+    const [activeMainTab, setActiveMainTab] = useState<'episodes' | 'ratings-graph'>(initialTab);
+    const [ratingsGraphData, setRatingsGraphData] = useState<SeasonRatingsData[]>([]);
+    const [isLoadingRatingsGraph, setIsLoadingRatingsGraph] = useState(false);
+    const [isRatingsCopied, setIsRatingsCopied] = useState(false);
 
     useEffect(() => {
         setShow(initialShow);
         setIsDescriptionExpanded(false);
+        setActiveMainTab(initialTab);
+        setRatingsGraphData([]);
         if (initialShow.media_type === 'tv' && !initialShow.is_manga) {
              if (initialShow.seasons && initialShow.seasons.length > 0) {
                  const firstSeason = initialShow.seasons.find(s => s.season_number === 1) || initialShow.seasons[0];
                  setSelectedSeason(firstSeason.season_number);
              }
         }
-    }, [initialShow]);
+    }, [initialShow, initialTab]);
+
+    const isRatingsRoute = initialTab === 'ratings-graph' || (typeof window !== 'undefined' && window.location.pathname.includes('/ratings/'));
+
+    useEffect(() => {
+        const shouldLoad = (isRatingsRoute || activeMainTab === 'ratings-graph') && show.media_type === 'tv' && !show.is_manga;
+        if (shouldLoad && show.seasons && show.seasons.length > 0 && ratingsGraphData.length === 0 && !isLoadingRatingsGraph) {
+            setIsLoadingRatingsGraph(true);
+            fetchSeriesEpisodesRatings(show.id, show.seasons, i18n.language, currentUser?.id)
+                .then(data => {
+                    setRatingsGraphData(data);
+                })
+                .catch(err => console.error('Failed to load ratings graph', err))
+                .finally(() => setIsLoadingRatingsGraph(false));
+        }
+    }, [isRatingsRoute, activeMainTab, show.id, show.seasons, show.media_type, show.is_manga, i18n.language, currentUser?.id, ratingsGraphData.length, isLoadingRatingsGraph]);
 
     useEffect(() => {
         const fetchEpisodes = async () => {
@@ -745,7 +787,8 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                     </div>
 
                     <div className="flex-1 min-w-0 space-y-12">
-                        {show.cast && show.cast.length > 0 && (
+                        {/* If on standard show page: render Cast section */}
+                        {!isRatingsRoute && show.cast && show.cast.length > 0 && (
                             <section>
                                 <div className="flex justify-between items-center mb-4">
                                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{show.is_anime ? t('details.voice_actors') : t('details.cast')}</h2>
@@ -802,9 +845,95 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                             </section>
                         )}
 
-                        {generateSeoParagraph()}
+                        {!isRatingsRoute && generateSeoParagraph()}
 
-                        {show.media_type === 'tv' && !show.is_manga && !isSeasonPage && show.seasons && show.seasons.length > 0 && (
+                        {/* If on standard show page: render tab header */}
+                        {!isRatingsRoute && show.media_type === 'tv' && !show.is_manga && !isSeasonPage && show.seasons && show.seasons.length > 0 && (
+                            <div className="flex items-center gap-3 border-b border-gray-200 dark:border-white/10 mb-8 mt-2">
+                                <button
+                                    onClick={() => setActiveMainTab('episodes')}
+                                    className={`pb-3 text-base font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                                        activeMainTab === 'episodes'
+                                            ? 'border-brand-primary text-brand-primary'
+                                            : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                                >
+                                    <span>{t('hero.seasons')} & {t('details.episodes')}</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        onNavigate(`/ratings/${slugify(show.title)}`);
+                                    }}
+                                    className={`pb-3 text-base font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                                        activeMainTab === 'ratings-graph'
+                                            ? 'border-brand-primary text-brand-primary'
+                                            : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                                >
+                                    <StarIcon className="w-4 h-4 text-amber-500 dark:text-brand-primary" />
+                                    <span>Ratings Graph</span>
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-primary/10 border border-brand-primary/20 text-brand-primary font-semibold">
+                                        Interactive
+                                    </span>
+                                </button>
+                            </div>
+                        )}
+
+                        {/* RATINGS GRAPH: Render directly HERE when isRatingsRoute, OR when activeMainTab is ratings-graph on standard page */}
+                        {(isRatingsRoute || (!isRatingsRoute && activeMainTab === 'ratings-graph')) && (
+                            <section className="mb-12 animate-fade-in space-y-6">
+                                {isLoadingRatingsGraph ? (
+                                    <div className="py-24 flex flex-col items-center justify-center gap-3 rounded-2xl bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-white/5">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
+                                        <span className="text-xs text-gray-400">Loading episode ratings graph...</span>
+                                    </div>
+                                ) : ratingsGraphData.length > 0 ? (
+                                    <EpisodeRatingsGraph
+                                        showId={show.id}
+                                        showTitle={show.title}
+                                        seasonsData={ratingsGraphData}
+                                        onNavigate={onNavigate}
+                                        currentUserId={currentUser?.id}
+                                        isLoggedIn={!!currentUser}
+                                        initialViewMode="vertical"
+                                        hideSummaryBanner={isRatingsRoute}
+                                    />
+                                ) : show.media_type === 'movie' ? (
+                                    <div className="p-6 rounded-2xl bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-white/5 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Movie Rating Breakdown</h3>
+                                            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-brand-primary/10 text-brand-primary">Feature Film</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+                                            <div className="p-3.5 rounded-xl bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/5">
+                                                <span className="text-xs text-gray-400 block mb-1">Score / 10</span>
+                                                <span className="text-2xl font-black text-amber-500">{show.rating ? show.rating.toFixed(1) : '–'}</span>
+                                            </div>
+                                            <div className="p-3.5 rounded-xl bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/5">
+                                                <span className="text-xs text-gray-400 block mb-1">Global Score</span>
+                                                <span className="text-2xl font-black text-brand-primary">{show.rating ? Math.round(show.rating * 10) : 0}%</span>
+                                            </div>
+                                            <div className="p-3.5 rounded-xl bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/5">
+                                                <span className="text-xs text-gray-400 block mb-1">Community Votes</span>
+                                                <span className="text-2xl font-black text-gray-900 dark:text-white">{(show.vote_count || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div className="p-3.5 rounded-xl bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/5">
+                                                <span className="text-xs text-gray-400 block mb-1">Popularity Rank</span>
+                                                <span className="text-2xl font-black text-gray-900 dark:text-white">{Math.round(show.popularity || 0)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-16 rounded-2xl bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-white/5 text-gray-400 text-sm">
+                                        No episode ratings available for this series.
+                                    </div>
+                                )}
+                            </section>
+                        )}
+
+                        {/* SEASONS PROGRESS & EPISODES:
+                        {/* SEASONS PROGRESS & EPISODES: Only rendered on standard show page when activeMainTab === 'episodes' */}
+                        {!isRatingsRoute && show.media_type === 'tv' && !show.is_manga && !isSeasonPage && activeMainTab === 'episodes' && show.seasons && show.seasons.length > 0 && (
                             <section className="mb-12 animate-fade-in">
                                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center justify-between">
                                     <span>{t('hero.seasons')} {t('common.progress', 'Progress')}</span>
@@ -857,7 +986,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                             </section>
                         )}
 
-                        {show.media_type === 'tv' && !show.is_manga && !isSeasonPage && (
+                        {!isRatingsRoute && show.media_type === 'tv' && !show.is_manga && !isSeasonPage && activeMainTab === 'episodes' && (
                             <div className="mb-12 animate-fade-in">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('details.episodes')}</h2>
@@ -932,18 +1061,20 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                             </div>
                         )}
 
-                        {show.relations && show.relations.length > 0 && <ContentCarousel title={show.is_anime ? `${t('hero.seasons')} & ${t('details.related_media')}` : t('details.related_media')} shows={show.relations} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} />}
-                        {!isSeasonPage && !show.is_manga && seasonShows.length > 0 && <div className="mt-8"><ContentCarousel title={t('hero.seasons')} shows={seasonShows} onShowClick={(s) => onNavigate(`/tv/${slugify(show.title)}/season/${s.season_number}`)} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} /></div>}
-                        {show.promo_video_url && <PromoVideo videoUrl={show.promo_video_url} title={show.title} />}
-                        {show.gallery_urls && show.gallery_urls.length > 0 && <ImageSlider images={show.gallery_urls} title={show.title} />}
+                        {!isRatingsRoute && show.relations && show.relations.length > 0 && <ContentCarousel title={show.is_anime ? `${t('hero.seasons')} & ${t('details.related_media')}` : t('details.related_media')} shows={show.relations} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} />}
+                        {!isRatingsRoute && !isSeasonPage && !show.is_manga && seasonShows.length > 0 && <div className="mt-8"><ContentCarousel title={t('hero.seasons')} shows={seasonShows} onShowClick={(s) => onNavigate(`/tv/${slugify(show.title)}/season/${s.season_number}`)} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} /></div>}
+                        {!isRatingsRoute && show.promo_video_url && <PromoVideo videoUrl={show.promo_video_url} title={show.title} />}
+                        {!isRatingsRoute && show.gallery_urls && show.gallery_urls.length > 0 && <ImageSlider images={show.gallery_urls} title={show.title} />}
                     </div>
                 </div>
 
-                {moreLikeThis.length > 0 && <div className="mt-16"><ContentCarousel title={t('details.more_like_this')} shows={moreLikeThis} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} /></div>}
+                {!isRatingsRoute && moreLikeThis.length > 0 && <div className="mt-16"><ContentCarousel title={t('details.more_like_this')} shows={moreLikeThis} onShowClick={(s) => { const slug = slugify(s.title); let prefix = s.media_type === 'tv' ? '/tv/' : '/movie/'; onNavigate(`${prefix}${slug}`); }} userList={userList} userFavorites={userFavorites} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} /></div>}
 
-                <div className="mt-16 w-full">
-                    <CommentsSection showId={show.id} onViewUser={handleViewUser} currentUser={currentUser} />
-                </div>
+                {!isRatingsRoute && (
+                    <div className="mt-16 w-full">
+                        <CommentsSection showId={show.id} onViewUser={handleViewUser} currentUser={currentUser} />
+                    </div>
+                )}
             </div>
             {isEditorOpen && (
                 <ShowEditorModal 

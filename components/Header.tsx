@@ -154,6 +154,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, isLoggedIn, onLogin, onLogo
                                     <NavItem textColorClass={navTextColorClass} onClick={() => onNavigate('/search?type=tv')}>{t('nav.tv')}</NavItem>
                                     <NavItem textColorClass={navTextColorClass} onClick={() => onNavigate('/search?type=movie')}>{t('nav.movies')}</NavItem>
                                     <NavItem textColorClass={navTextColorClass} onClick={() => onNavigate('/lists')}>{t('nav.lists')}</NavItem>
+                                    <NavItem textColorClass={navTextColorClass} onClick={() => onNavigate('/ratings-graph')}>Ratings Graph</NavItem>
                                 </nav>
                             </div>
 
@@ -288,6 +289,10 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, isLoggedIn, onLogin, onLogo
                              <button onClick={() => handleNavClick('/search?type=tv')} className="text-start py-2.5 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-brand-primary transition-colors">{t('nav.tv')}</button>
                              <button onClick={() => handleNavClick('/search?type=movie')} className="text-start py-2.5 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-brand-primary transition-colors">{t('nav.movies')}</button>
                              <button onClick={() => handleNavClick('/lists')} className="text-start py-2.5 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-brand-primary transition-colors">{t('nav.lists')}</button>
+                             <button onClick={() => handleNavClick('/ratings-graph')} className="text-start py-2.5 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-brand-primary transition-colors flex items-center justify-between">
+                                 <span>Ratings Graph</span>
+                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-primary/20 text-brand-primary font-bold">New</span>
+                             </button>
                          </nav>
                          
                          {/* Mobile Language Switcher */}

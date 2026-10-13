@@ -46,7 +46,7 @@ export const getGenreId = (name: string): number | undefined => {
 
 export const getGenreName = (id: number): string => GENRES[id] || 'Unknown';
 
-const fetchTMDB = async (endpoint: string, params: Record<string, string> = {}, retries = 3) => {
+export const fetchTMDB = async (endpoint: string, params: Record<string, string> = {}, retries = 3) => {
     if (!API_KEY) {
         Logger.warn('TMDB API Key is missing');
         return null;
@@ -167,6 +167,7 @@ export const mapTMDBToShow = (item: any): Show => {
                 overview: e.overview,
                 still_path: e.still_path ? `${IMAGE_BASE_URL}${e.still_path}` : null,
                 vote_average: e.vote_average,
+                vote_count: e.vote_count || 0,
                 air_date: e.air_date,
                 episode_number: e.episode_number,
                 season_number: e.season_number,

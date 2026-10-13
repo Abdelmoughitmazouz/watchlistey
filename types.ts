@@ -91,10 +91,90 @@ export interface Episode {
   overview: string;
   still_path: string | null;
   vote_average: number;
+  vote_count?: number;
   air_date: string;
   episode_number: number;
   season_number: number;
   runtime?: number;
+}
+
+// Database Entities for Episode Ratings
+export interface EpisodeRecord {
+  id: number;
+  show_id: number;
+  season_number: number;
+  episode_number: number;
+  title: string;
+  air_date: string | null;
+  still_path?: string | null;
+  runtime?: number | null;
+  overview?: string | null;
+}
+
+export interface ExternalRating {
+  id?: number;
+  episode_id: number;
+  source: string; // e.g. 'TMDB', 'IMDb', 'Trakt'
+  rating: number; // 0 to 10
+  votes: number;
+  updated_at?: string;
+}
+
+export interface WatchlisteyUserRating {
+  id?: number;
+  episode_id: number;
+  user_id: string;
+  rating: number; // 1 to 10
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AggregatedRatingStats {
+  episode_id: number;
+  average_external_rating: number;
+  average_watchlistey_rating: number;
+  external_votes: number;
+  watchlistey_votes: number;
+  last_updated?: string;
+}
+
+export interface EpisodeRatingItem {
+  id: number;
+  show_id: number;
+  season_number: number;
+  episode_number: number;
+  title: string;
+  air_date: string | null;
+  still_path: string | null;
+  runtime: number;
+  overview: string;
+  external_rating: number;
+  external_votes: number;
+  watchlistey_rating: number;
+  watchlistey_votes: number;
+  user_rating?: number | null;
+}
+
+export interface SeasonRatingsData {
+  season_number: number;
+  name: string;
+  air_date?: string;
+  episodes: EpisodeRatingItem[];
+  average_external_rating: number;
+  average_watchlistey_rating: number;
+  total_votes: number;
+}
+
+export interface SeriesRatingsSummary {
+  show_id: number;
+  show_title: string;
+  total_seasons: number;
+  total_episodes: number;
+  average_external_rating: number;
+  average_watchlistey_rating: number;
+  highest_rated_episode?: EpisodeRatingItem;
+  lowest_rated_episode?: EpisodeRatingItem;
+  best_season_number?: number;
 }
 
 export interface ExternalIds {

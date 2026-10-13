@@ -15,7 +15,8 @@
     "settings": "Settings",
     "search_placeholder": "Search movies, TV, anime, manga...",
     "blog": "Blog",
-    "lists": "Lists"
+    "lists": "Lists",
+    "ratings_graph": "Ratings Graph"
   },
   "hero": {
     "match": "% Match",

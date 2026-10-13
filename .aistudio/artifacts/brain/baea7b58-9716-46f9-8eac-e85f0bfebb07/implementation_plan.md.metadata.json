@@ -1,0 +1,6 @@
+{
+  "summary": "Plan to make the /ratings/:slug page completely identical to ShowDetail, preserving all sections, lists, dimensions, and functionality while displaying the interactive ratings graph.",
+  "updatedAt": "2026-10-13T14:38:45.646406263Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

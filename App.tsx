@@ -42,6 +42,7 @@ import TMDBDemo from './pages/TMDBDemo';
 import TierListsPage from './pages/TierListPage';
 import TierListBuilder from './pages/TierListBuilder';
 import FeedPage from './pages/FeedPage';
+import { RatingsGraphPage } from './pages/RatingsGraphPage';
 import { useTranslation } from 'react-i18next';
 import { currentUser as demoUser } from './constants';
 
@@ -141,6 +142,39 @@ const App = () => {
                         setExtraShows(prev => new Map(prev).set(`${show!.media_type}-${show!.id}`, show!));
                         setSelectedShow(show);
                         const internalPath = `/${type}/${newSlug}`;
+                        const newPath = getLocalizedPath(internalPath, route.lang);
+                        if (newPath !== pathname) {
+                            window.history.replaceState(null, '', newPath);
+                            setPathname(newPath);
+                        }
+                        setIsContentNotFound(false);
+                    } else setIsContentNotFound(true);
+                } catch (e) {
+                    console.error(e);
+                    setIsContentNotFound(true);
+                }
+            } else if ((route.type === 'ratings' && route.slug) || (route.rest.startsWith('ratings/') && route.rest.split('/')[1])) {
+                const slug = route.slug || route.rest.split('ratings/')[1]?.split('/')[0];
+                let show: Show | null = null;
+                try {
+                    const languageChanged = prevLanguageRef.current !== route.lang;
+                    if (!languageChanged && window.history.state && (window.history.state as Show).id) show = window.history.state as Show;
+                    if (!show && slug) {
+                        // First check TV / Anime series
+                        let id = await getShowIdFromSlug(slug, 'tv', route.lang);
+                        let mediaType: 'tv' | 'movie' = 'tv';
+                        if (!id) {
+                            // Then check movie
+                            id = await getShowIdFromSlug(slug, 'movie', route.lang);
+                            mediaType = 'movie';
+                        }
+                        if (id) show = await getShowDetails(id, mediaType, true, route.lang);
+                    }
+                    if (show) {
+                        const newSlug = slugify(show.title);
+                        setExtraShows(prev => new Map(prev).set(`${show!.media_type}-${show!.id}`, show!));
+                        setSelectedShow(show);
+                        const internalPath = `/ratings/${newSlug}`;
                         const newPath = getLocalizedPath(internalPath, route.lang);
                         if (newPath !== pathname) {
                             window.history.replaceState(null, '', newPath);
@@ -475,8 +509,9 @@ const App = () => {
     const currentRoute = parsePath(pathname);
     const isShowDetail = !!(currentRoute.type && currentRoute.slug && ['movie','tv'].includes(currentRoute.type));
     const isEpisodePage = /\/season\/[^/]+\/episode\/[^/]+$/.test(pathname);
+    const isRatingsDetail = !!(currentRoute.type === 'ratings' || (currentRoute.rest.startsWith('ratings/') && currentRoute.rest.split('/')[1]));
     const isHome = !currentRoute.rest;
-    const hasHero = isHome || isShowDetail || isEpisodePage;
+    const hasHero = isHome || isShowDetail || isEpisodePage || isRatingsDetail;
     const isBuilderRoute = currentRoute.rest === 'lists/new' || (currentRoute.rest.startsWith('lists/') && currentRoute.rest.split('/').length >= 2);
 
     const renderContent = () => {
@@ -508,6 +543,31 @@ const App = () => {
         }
         if (path.startsWith('search')) return <SearchPage onNavigate={handleNavigate} onBack={() => handleNavigate('/')} userList={user?.list || {}} userFavorites={user?.favorites} userCharacters={user?.characters} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} />;
         if (path === 'my-list') return <MyListPage userList={user?.list || {}} userFavorites={user?.favorites} userCharacters={user?.characters} shows={[]} onNavigate={handleNavigate} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} />;
+        if (path === 'ratings-graph' || path === 'ratings') return <RatingsGraphPage onNavigate={handleNavigate} currentUserId={user?.id} isLoggedIn={!!user} />;
+        if (currentRoute.type === 'ratings' || path.startsWith('ratings/')) {
+            if (selectedShow) {
+                return (
+                    <ShowDetail
+                        show={selectedShow}
+                        allShows={[...movies, ...tvShows]}
+                        onBack={() => handleNavigate('/ratings-graph')}
+                        onNavigate={handleNavigate}
+                        onUpdateShow={setSelectedShow}
+                        userList={user?.list || {}}
+                        userFavorites={user?.favorites}
+                        userCharacters={user?.characters}
+                        handleUpdateListStatus={handleUpdateListStatus}
+                        handleToggleFavorite={handleToggleFavorite}
+                        currentUser={user}
+                        notifications={notifications}
+                        handleToggleEpisode={handleToggleEpisode}
+                        initialTab="ratings-graph"
+                    />
+                );
+            }
+            if (isContentNotFound) return <NotFoundPage onNavigate={handleNavigate} />;
+            return <div className="min-h-screen flex items-center justify-center pt-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div></div>;
+        }
         if (path === 'lists') return <TierListsPage onNavigate={handleNavigate} />;
         if (path === 'lists/new' || path.startsWith('lists/')) return <TierListBuilder onNavigate={handleNavigate} />;
         if (path === 'about') return <AboutPage />;
