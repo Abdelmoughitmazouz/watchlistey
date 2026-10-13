@@ -135,7 +135,7 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
                 const valid = fetched.filter(Boolean) as Show[];
                 if (valid.length > 0) {
                     setHydratedShows(prev => {
-                        const newItems = valid.filter(v => !prev.some(p => p.id === v.id));
+                        const newItems = valid.filter(v => !prev.some(p => Number(p.id) === Number(v.id) && p.media_type === v.media_type));
                         return [...prev, ...newItems];
                     });
                 }
@@ -195,15 +195,28 @@ const MyListPage: React.FC<MyListPageProps> = ({ userList, userCharacters = {}, 
                 return s.media_type !== 'person';
             });
 
-            let showWithFavorite = show;
-            if (show && (userFavorites[show.id] || userList[show.id]?.is_favorite)) {
-                showWithFavorite = { ...show, is_favorite: true };
+            // Fallback for partial data if hydration is pending or failed
+            const partialShow: Show | undefined = !show && item.title ? {
+                id: showId,
+                title: item.title,
+                image_url: item.poster_path ? (item.poster_path.startsWith('http') ? item.poster_path : `https://image.tmdb.org/t/p/w500${item.poster_path}`) : 'https://via.placeholder.com/400x600?text=Loading...',
+                backdrop_url: item.backdrop_path ? (item.backdrop_path.startsWith('http') ? item.backdrop_path : `https://image.tmdb.org/t/p/w1280${item.backdrop_path}`) : 'https://via.placeholder.com/1280x720?text=Loading...',
+                rating: item.vote_average || 0,
+                year: item.release_date ? new Date(item.release_date).getFullYear() : 0,
+                description: '',
+                media_type: item.media_type as any || 'tv',
+                genres: []
+            } : undefined;
+
+            let showWithFavorite = show || partialShow;
+            if (showWithFavorite && (userFavorites[showId] || userList[showId]?.is_favorite)) {
+                showWithFavorite = { ...showWithFavorite, is_favorite: true };
             }
 
             return {
                 item,
                 show: showWithFavorite,
-                isLoading: !show
+                isLoading: !show && !partialShow
             };
         });
 

@@ -238,21 +238,50 @@ export const getProfileById = async (userId: string): Promise<User | null> => {
     const { data: listData } = await supabase.from('list_items').select('*').eq('user_id', userId);
     const { data: favData } = await supabase.from('favorites').select('*').eq('user_id', userId);
     const { data: charData } = await supabase.from('characters').select('*').eq('user_id', userId);
+    
     const list: Record<number, ListItem> = {};
-    listData?.forEach((item: any) => {
-        const sid = typeof item.show_id === 'string' ? parseInt(item.show_id, 10) : item.show_id;
-        list[sid] = { ...item, show_id: sid };
-    });
+    if (listData) {
+        listData.forEach((item: any) => {
+            const sid = Number(item.show_id);
+            if (!isNaN(sid) && sid !== 0) {
+                // Ensure media_type is present, default to 'tv' only if absolutely missing
+                const mediaType = item.media_type || (item.title ? 'movie' : 'tv');
+                list[sid] = { ...item, show_id: sid, media_type: mediaType };
+            }
+        });
+    }
+
     const favorites: Record<number, ListItem> = {};
-    favData?.forEach((item: any) => {
-        const sid = typeof item.show_id === 'string' ? parseInt(item.show_id, 10) : item.show_id;
-        favorites[sid] = { ...item, show_id: sid };
-    });
+    if (favData) {
+        favData.forEach((item: any) => {
+            const sid = Number(item.show_id);
+            if (!isNaN(sid) && sid !== 0) {
+                const mediaType = item.media_type || (item.title ? 'movie' : 'tv');
+                favorites[sid] = { ...item, show_id: sid, media_type: mediaType };
+            }
+        });
+    }
+
     const characters: Record<number, ListItem> = {};
-    charData?.forEach((item: any) => { 
-        const pid = typeof item.person_id === 'string' ? parseInt(item.person_id, 10) : item.person_id;
-        characters[pid] = { ...item, id: item.id, show_id: pid, person_id: pid, media_type: 'person', title: item.name, poster_path: item.profile_path, status: 'Favorite', added_at: item.added_at }; 
-    });
+    if (charData) {
+        charData.forEach((item: any) => { 
+            const pid = Number(item.person_id || item.show_id);
+            if (!isNaN(pid) && pid !== 0) {
+                characters[pid] = { 
+                    ...item, 
+                    id: item.id, 
+                    show_id: pid, 
+                    person_id: pid, 
+                    media_type: 'person', 
+                    title: item.name || item.title, 
+                    poster_path: item.profile_path || item.poster_path, 
+                    status: 'Favorite', 
+                    added_at: item.added_at 
+                }; 
+            }
+        });
+    }
+    
     return { ...data, list, favorites, characters };
 };
 

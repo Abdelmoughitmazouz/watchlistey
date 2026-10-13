@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Show, User, ListStatus, ListItem, CastMember, Episode, AppNotification, Subscription } from '../types';
-import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, StarIcon, ArrowRightIcon, XIcon, FacebookIconV2, InstagramIcon, LinkIcon, UserPlaceholderIcon, CaretDownIcon, CalendarIcon, SettingsIconV2 } from '../constants';
+import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, StarIcon, ArrowRightIcon, XIcon, FacebookIconV2, InstagramIcon, LinkIcon, UserPlaceholderIcon, CaretDownIcon, CalendarIcon, SettingsIconV2, CompletedIcon } from '../constants';
 import ContentCarousel from '../components/ContentCarousel';
 import PromoVideo from '../components/PromoVideo';
 import ImageSlider from '../components/ImageSlider';
@@ -28,11 +28,12 @@ interface ShowDetailProps {
     currentUser?: User;
     handleToggleFavorite?: (show: Show) => void;
     onRegisterNotification?: (showId: number) => void;
+    handleToggleEpisode?: (showId: number, seasonNumber: number, episodeNumber: number, isWatched: boolean) => Promise<boolean>;
     notifications?: AppNotification[];
     subscriptions?: Subscription[];
 }
 
-const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, onBack, onNavigate, onUpdateShow, userList, userFavorites, userCharacters = {}, handleUpdateListStatus, currentUser, handleToggleFavorite, onRegisterNotification, notifications, subscriptions = [] }) => {
+const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, onBack, onNavigate, onUpdateShow, userList, userFavorites, userCharacters = {}, handleUpdateListStatus, currentUser, handleToggleFavorite, onRegisterNotification, handleToggleEpisode, notifications, subscriptions = [] }) => {
     const { t, i18n } = useTranslation();
     const [show, setShow] = useState(initialShow);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
@@ -76,6 +77,7 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
     const [dbFavCount, setDbFavCount] = useState<number>(0);
     const [initialFavState, setInitialFavState] = useState<boolean>(false);
     const [watchedCount, setWatchedCount] = useState<number>(0);
+    const [watchedEpisodes, setWatchedEpisodes] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         let isMounted = true;
@@ -91,16 +93,22 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                     setInitialFavState(isFavorite); 
                 }
 
-                // Fetch watched episodes count
+                // Fetch watched episodes details
                 if (currentUser && show.media_type === 'tv') {
-                    const { count: wCount, error: wError } = await supabase
+                    const { data: wData, error: wError } = await supabase
                         .from('episode_tracking')
-                        .select('*', { count: 'exact', head: true })
+                        .select('season_number, episode_number')
                         .eq('user_id', currentUser.id)
                         .eq('show_id', show.id)
                         .eq('is_watched', true);
-                    if (isMounted && !wError && wCount !== null) {
-                        setWatchedCount(wCount);
+                    
+                    if (isMounted && !wError && wData) {
+                        setWatchedCount(wData.length);
+                        const watchedMap: Record<string, boolean> = {};
+                        wData.forEach(item => {
+                            watchedMap[`${item.season_number}-${item.episode_number}`] = true;
+                        });
+                        setWatchedEpisodes(watchedMap);
                     }
                 }
             } else {
@@ -111,6 +119,23 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
         return () => { isMounted = false; };
     }, [show.id, currentUser?.id]); 
 
+    // Helper to check if an episode is watched
+    const isEpisodeWatched = (season: number, episode: number) => {
+        return !!watchedEpisodes[`${season}-${episode}`];
+    };
+
+    // Calculate progress for a specific season
+    const getSeasonProgress = (seasonNumber: number) => {
+        if (!show.seasons) return { watched: 0, total: 0 };
+        const season = show.seasons.find(s => s.season_number === seasonNumber);
+        if (!season) return { watched: 0, total: 0 };
+        
+        let watched = 0;
+        for (let i = 1; i <= season.episode_count; i++) {
+            if (isEpisodeWatched(seasonNumber, i)) watched++;
+        }
+        return { watched, total: season.episode_count };
+    };
     const realFavoritesCount = Math.max(0, dbFavCount + (isFavorite ? 1 : 0) - (initialFavState ? 1 : 0));
 
     const [isHydrating, setIsHydrating] = useState(false);
@@ -417,6 +442,28 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
     const description = show.description || '';
     const shouldTruncate = description.length > DESCRIPTION_LIMIT;
     const displayedDescription = isDescriptionExpanded || !shouldTruncate ? description : description.slice(0, DESCRIPTION_LIMIT).trim() + '...';
+
+    const toggleWatched = async (episode: Episode) => {
+        if (!currentUser || !handleToggleEpisode) return;
+        
+        const seasonNum = isSeasonPage ? show.season_number : selectedSeason;
+        if (seasonNum === null) return;
+
+        const isCurrentlyWatched = isEpisodeWatched(seasonNum, episode.episode_number);
+        const success = await handleToggleEpisode(show.id, seasonNum, episode.episode_number, !isCurrentlyWatched);
+
+        if (success) {
+            // Optimistic Update
+            setWatchedEpisodes(prev => {
+                const next = { ...prev };
+                const key = `${seasonNum}-${episode.episode_number}`;
+                if (!isCurrentlyWatched) next[key] = true;
+                else delete next[key];
+                return next;
+            });
+            setWatchedCount(prev => isCurrentlyWatched ? prev - 1 : prev + 1);
+        }
+    };
 
     const handleEpisodeClick = (episode: Episode) => {
         const slug = slugify(isSeasonPage ? show.parent_show_title || show.title : show.title);
@@ -757,18 +804,73 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
 
                         {generateSeoParagraph()}
 
+                        {show.media_type === 'tv' && !show.is_manga && !isSeasonPage && show.seasons && show.seasons.length > 0 && (
+                            <section className="mb-12 animate-fade-in">
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center justify-between">
+                                    <span>{t('hero.seasons')} {t('common.progress', 'Progress')}</span>
+                                    <span className="text-sm font-normal text-gray-500">{watchedCount} / {show.number_of_episodes} {t('details.episodes')}</span>
+                                </h2>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {show.seasons.filter(s => s.season_number > 0).map(season => {
+                                        const { watched, total } = getSeasonProgress(season.season_number);
+                                        const percent = total > 0 ? (watched / total) * 100 : 0;
+                                        const isCompleted = watched === total && total > 0;
+                                        
+                                        return (
+                                            <button 
+                                                key={season.id}
+                                                onClick={() => setSelectedSeason(season.season_number)}
+                                                className={`group relative p-4 rounded-xl border transition-all text-start ${
+                                                    selectedSeason === season.season_number 
+                                                    ? 'bg-brand-primary/5 border-brand-primary ring-1 ring-brand-primary/20' 
+                                                    : 'bg-white dark:bg-[#181818] border-gray-200 dark:border-gray-800 hover:border-brand-primary/50'
+                                                }`}
+                                            >
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <span className={`font-bold text-sm ${selectedSeason === season.season_number ? 'text-brand-primary' : 'text-gray-900 dark:text-white'}`}>
+                                                        {season.name || `Season ${season.season_number}`}
+                                                    </span>
+                                                    {isCompleted && (
+                                                        <div className="bg-green-500 text-white rounded-full p-0.5">
+                                                            <StarIcon className="w-3 h-3" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex justify-between items-end">
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                                        {watched} / {total} {t('details.episodes')}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold text-gray-400 group-hover:text-brand-primary transition-colors">
+                                                        {Math.round(percent)}%
+                                                    </span>
+                                                </div>
+                                                <div className="mt-2 h-1.5 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                                    <div 
+                                                        className={`h-full rounded-full transition-all duration-500 ${isCompleted ? 'bg-green-500' : 'bg-brand-primary'}`} 
+                                                        style={{ width: `${percent}%` }}
+                                                    />
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        )}
+
                         {show.media_type === 'tv' && !show.is_manga && !isSeasonPage && (
                             <div className="mb-12 animate-fade-in">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('details.episodes')}</h2>
                                     {show.seasons && show.seasons.length > 0 && (
-                                        <div className="relative">
-                                            <select value={selectedSeason || ''} onChange={(e) => setSelectedSeason(parseInt(e.target.value))} className="appearance-none bg-gray-100 dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white py-2 ps-4 pe-10 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer">
-                                                {show.seasons.map(season => (
-                                                    <option key={season.id} value={season.season_number}>Season {season.season_number}</option>
-                                                ))}
-                                            </select>
-                                            <CaretDownIcon className="absolute end-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-500" />
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative">
+                                                <select value={selectedSeason || ''} onChange={(e) => setSelectedSeason(parseInt(e.target.value))} className="appearance-none bg-gray-100 dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white py-2 ps-4 pe-10 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer min-w-[140px]">
+                                                    {show.seasons.map(season => (
+                                                        <option key={season.id} value={season.season_number}>Season {season.season_number}</option>
+                                                    ))}
+                                                </select>
+                                                <CaretDownIcon className="absolute end-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-500" />
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -784,8 +886,41 @@ const ShowDetail: React.FC<ShowDetailProps> = ({ show: initialShow, allShows, on
                                                     </div>
                                                     <div className="flex-1 min-w-0 w-full">
                                                         <div className="flex justify-between items-start gap-2 mb-1">
-                                                            <div><h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-brand-primary transition-colors"><span className="text-gray-500 dark:text-gray-500 me-2 font-mono text-sm">E{episode.episode_number}</span>{episode.name}</h3><div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1"><span>{episode.air_date ? new Date(episode.air_date).toLocaleDateString() : 'TBA'}</span>{episode.vote_average > 0 && <div className="flex items-center gap-1 text-yellow-500"><StarIcon className="w-3 h-3" /><span>{episode.vote_average.toFixed(1)}</span></div>}</div></div>
-                                                            <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}><ListStatusButton showId={episode.id} userList={userList} handleUpdateListStatus={handleUpdateListStatus} isIconOnly show={{ ...show, id: episode.id, title: episode.name, media_type: 'tv', image_url: episode.still_path ? `https://image.tmdb.org/t/p/w500${episode.still_path}` : '', year: episode.air_date ? new Date(episode.air_date).getFullYear() : 0 }} transparent align="right" /></div>
+                                                            <div>
+                                                                <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-brand-primary transition-colors flex items-center gap-2">
+                                                                     <span className="text-gray-500 dark:text-gray-500 font-mono text-sm">E{episode.episode_number}</span>
+                                                                     {episode.name}
+                                                                     {isEpisodeWatched(selectedSeason || 0, episode.episode_number) && (
+                                                                         <CompletedIcon className="w-4 h-4 text-green-500" />
+                                                                     )}
+                                                                 </h3>
+                                                                 <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                                     <span>{episode.air_date ? new Date(episode.air_date).toLocaleDateString() : 'TBA'}</span>
+                                                                     {episode.vote_average > 0 && (
+                                                                         <div className="flex items-center gap-1 text-yellow-500">
+                                                                             <StarIcon className="w-3 h-3" />
+                                                                             <span>{episode.vote_average.toFixed(1)}</span>
+                                                                         </div>
+                                                                     )}
+                                                                 </div>
+                                                             </div>
+                                                             <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                                 {currentUser ? (
+                                                                     <button 
+                                                                         onClick={() => toggleWatched(episode)}
+                                                                         className={`p-2 rounded-full transition-all border ${
+                                                                             isEpisodeWatched(selectedSeason || 0, episode.episode_number)
+                                                                             ? 'bg-green-500 border-green-600 text-white shadow-sm'
+                                                                             : 'bg-white dark:bg-[#1e1e1e] border-gray-300 dark:border-gray-700 text-gray-400 hover:text-green-500 hover:border-green-500'
+                                                                         }`}
+                                                                         title={isEpisodeWatched(selectedSeason || 0, episode.episode_number) ? "Mark as Unwatched" : "Mark as Watched"}
+                                                                     >
+                                                                         <CompletedIcon className="w-5 h-5" />
+                                                                     </button>
+                                                                 ) : (
+                                                                     <ListStatusButton showId={episode.id} userList={userList} handleUpdateListStatus={handleUpdateListStatus} isIconOnly show={{ ...show, id: episode.id, title: episode.name, media_type: 'tv', image_url: episode.still_path ? `https://image.tmdb.org/t/p/w500${episode.still_path}` : '', year: episode.air_date ? new Date(episode.air_date).getFullYear() : 0 }} transparent align="right" />
+                                                                 )}
+                                                             </div>
                                                         </div>
                                                         <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">{episode.overview || "No overview available for this episode."}</p>
                                                     </div>

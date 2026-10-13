@@ -176,6 +176,44 @@ const App = () => {
         else document.documentElement.classList.remove('dark');
     }, [isDark]);
 
+    const handleToggleEpisode = async (showId: number, seasonNumber: number, episodeNumber: number, isWatched: boolean) => {
+        if (!user || !isSupabaseConfigured) return false;
+
+        try {
+            if (isWatched) {
+                const { error } = await supabase
+                    .from('episode_tracking')
+                    .upsert({
+                        user_id: user.id,
+                        show_id: showId,
+                        season_number: seasonNumber,
+                        episode_number: episodeNumber,
+                        is_watched: true,
+                        watched_at: new Date().toISOString()
+                    }, { onConflict: 'user_id, show_id, season_number, episode_number' });
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('episode_tracking')
+                    .delete()
+                    .match({
+                        user_id: user.id,
+                        show_id: showId,
+                        season_number: seasonNumber,
+                        episode_number: episodeNumber
+                    });
+                if (error) throw error;
+            }
+            
+            // Re-fetch progress to update the main list if needed
+            // (Optional, but helps keep things in sync)
+            return true;
+        } catch (e) {
+            console.error("Episode toggle failed", e);
+            return false;
+        }
+    };
+
     const handleUpdateListStatus = async (showId: number, status: ListStatus | null, show?: Show, customAddedAt?: string, extraData?: Partial<ListItem>) => {
         if (!user) return false;
         
@@ -186,18 +224,32 @@ const App = () => {
         if (!dbMediaType && user.list?.[showId]) {
             dbMediaType = user.list[showId].media_type;
         }
+
+        // Check favorites too
+        if (!dbMediaType && user.favorites?.[showId]) {
+            dbMediaType = user.favorites[showId].media_type;
+        }
         
-        // Final fallback
+        // Final fallback: Check show title patterns if show object is available
+        if (!dbMediaType && show) {
+            // In our system, 'Show' is a mapped type where TMDB 'name' or 'title' becomes 'title'
+            // We use 'tv' as safe fallback if media_type is completely missing
+            dbMediaType = show.media_type || 'tv';
+        }
+
+        // Absolute fallback based on ID range (rough estimate but better than nothing)
         if (!dbMediaType) {
             dbMediaType = 'tv';
         }
+
+        const timestamp = customAddedAt || new Date().toISOString();
 
         // Update local user state for immediate response
         setUser(prev => {
             if (!prev) return undefined;
             const newList = { ...prev.list };
             const newChars = { ...prev.characters };
-            const timestamp = customAddedAt || new Date().toISOString();
+            
             if (dbMediaType === 'person') {
                 if (status === null) delete newChars[showId];
                 else newChars[showId] = { id: Date.now(), show_id: showId, person_id: showId, user_id: prev.id, status: status, added_at: timestamp, media_type: 'person', title: show?.title, poster_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), is_favorite: true } as any;
@@ -232,18 +284,18 @@ const App = () => {
                  else await supabase.from('list_items').delete().match({ user_id: user.id, show_id: showId, media_type: dbMediaType });
             } else {
                  if (dbMediaType === 'person') {
-                     await supabase.from('characters').upsert({ user_id: user.id, person_id: showId, name: show?.title, profile_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), added_at: customAddedAt });
+                     await supabase.from('characters').upsert({ user_id: user.id, person_id: showId, name: show?.title, profile_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), added_at: timestamp });
                  } else {
                      const payload: any = { 
                         user_id: user.id, 
-                        show_id: showId, 
+                        show_id: Number(showId), 
                         status: status, 
                         media_type: dbMediaType, 
+                        added_at: timestamp, // Always provide it to satisfy potential DB constraints
                         updated_at: new Date().toISOString(),
-                        ...extraData,
-                        rating: extraData?.rating !== undefined ? Math.round(extraData.rating) : undefined
+                        ...extraData
                      };
-                     if (customAddedAt) payload.added_at = customAddedAt;
+                     
                      if (show) { 
                          payload.title = show.title; 
                          payload.poster_path = show.image_url?.replace('https://image.tmdb.org/t/p/w500', ''); 
@@ -253,9 +305,17 @@ const App = () => {
                      }
                      
                      // 1. Update List
-                     const { error: upsertError } = await supabase.from('list_items').upsert(payload, { onConflict: 'user_id, show_id, media_type' });
-                     if (upsertError) throw upsertError;
-
+                     // We try multiple conflict targets to be compatible with different possible DB constraints
+                     let { error: upsertError } = await supabase.from('list_items').upsert(payload, { onConflict: 'user_id, show_id' });
+                     
+                     if (upsertError) {
+                        // Fallback retry with media_type in conflict target
+                        const { error: retryError } = await supabase.from('list_items').upsert(payload, { onConflict: 'user_id, show_id, media_type' });
+                        if (retryError) {
+                            console.error("Supabase upsert failed:", retryError);
+                            throw retryError;
+                        }
+                     }
                     // 2. Explicitly POST TO FEED (as requested)
                     const actionMap: Record<string, string> = {
                         'Watching': 'started_watching',
@@ -477,7 +537,7 @@ const App = () => {
         const episodeMatch = path.match(/^tv\/([^/]+)\/season\/([^/]+)\/episode\/([^/]+)$/);
         if (episodeMatch) return <EpisodePage showSlug={episodeMatch[1]} seasonNumber={episodeMatch[2]} episodeNumber={episodeMatch[3]} onBack={() => window.history.back()} onNavigate={handleNavigate} userList={user?.list || {}} handleUpdateListStatus={handleUpdateListStatus} />;
         if (path.endsWith('/cast')) { if (selectedShow) return <CastPage show={selectedShow} onBack={() => window.history.back()} onNavigate={handleNavigate} userCharacters={user?.characters} handleUpdateListStatus={handleUpdateListStatus} />; }
-        if (selectedShow && (currentRoute.type && currentRoute.slug)) return <ShowDetail show={selectedShow} allShows={[...movies, ...tvShows]} onBack={() => handleNavigate('/')} onNavigate={handleNavigate} onUpdateShow={setSelectedShow} userList={user?.list || {}} userFavorites={user?.favorites} userCharacters={user?.characters} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} currentUser={user} notifications={notifications} />;
+        if (selectedShow && (currentRoute.type && currentRoute.slug)) return <ShowDetail show={selectedShow} allShows={[...movies, ...tvShows]} onBack={() => handleNavigate('/')} onNavigate={handleNavigate} onUpdateShow={setSelectedShow} userList={user?.list || {}} userFavorites={user?.favorites} userCharacters={user?.characters} handleUpdateListStatus={handleUpdateListStatus} handleToggleFavorite={handleToggleFavorite} currentUser={user} notifications={notifications} handleToggleEpisode={handleToggleEpisode} />;
         if (isContentNotFound) return <NotFoundPage onNavigate={handleNavigate} />;
         return <div className="min-h-screen flex items-center justify-center pt-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div></div>;
     };
