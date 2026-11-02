@@ -24,6 +24,19 @@
       } catch (e) {}
     </script>
 
+    <script>
+      // Restore deep link URL if served via static 404 redirect (e.g. GitHub Pages or static hosts)
+      (function() {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var redirectPath = params.get('p');
+          if (redirectPath) {
+            window.history.replaceState(null, '', decodeURIComponent(redirectPath));
+          }
+        } catch (e) {}
+      })();
+    </script>
+
     <!-- Primary Meta Tags -->
     <title>Track Movies, TV & Anime | Ultimate Watchlist App</title>
     <meta name="title" content="Track Movies, TV & Anime | Ultimate Watchlist App" />

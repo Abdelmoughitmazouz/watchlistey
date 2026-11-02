@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Watchlistey</title>
+    <script>
+      // Single Page Apps redirect for GitHub Pages and static hosts
+      // Preserves deep path on refresh and redirects back to SPA entry point
+      (function() {
+        var l = window.location;
+        var pathname = l.pathname;
+        var search = l.search;
+        var hash = l.hash;
+        // Redirect to /?p=...
+        var destination = l.protocol + '//' + l.host + '/?p=' + encodeURIComponent(pathname + search + hash);
+        l.replace(destination);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Redirecting...</p>
+  </body>
+</html>

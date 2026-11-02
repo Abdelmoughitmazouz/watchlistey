@@ -1,63 +1,20 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr" class="dark">
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
+    <meta charset="utf-8">
+    <title>Watchlistey</title>
     <script>
-      // Fix for "Cannot set property fetch of #<Window> which has only a getter"
-      if (typeof global === 'undefined') {
-        window.global = window;
-      }
-      // If fetch is defined as a getter on the prototype chain (e.g. Window.prototype),
-      // assigning to window.fetch will throw. We can shadow it with a configurable property.
-      try {
-        let currentFetch = window.fetch;
-        Object.defineProperty(window, 'fetch', {
-          get: function() { return currentFetch; },
-          set: function(val) { currentFetch = val; },
-          configurable: true,
-          enumerable: true
-        });
-      } catch (e) {}
+      (function() {
+        var l = window.location;
+        var pathname = l.pathname;
+        var search = l.search;
+        var hash = l.hash;
+        var destination = l.protocol + '//' + l.host + '/?p=' + encodeURIComponent(pathname + search + hash);
+        l.replace(destination);
+      })();
     </script>
-
-    <!-- Primary Meta Tags -->
-    <title>Watchlistey - Page Not Found</title>
-    <meta name="title" content="Watchlistey - Page Not Found" />
-    <meta name="description" content="Track movies, TV shows, and anime in one place with Watchlistey." />
-    
-    <!-- Favicons -->
-    <link rel="icon" href="/favicon.ico" sizes="32x32" />
-    <link rel="icon" href="/icon.svg" type="image/svg+xml" sizes="any" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              brand: {
-                primary: '#fbc500',
-              }
-            }
-          }
-        }
-      }
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-      }
-    </style>
   </head>
-  <body class="bg-white text-gray-900 dark:bg-[#0f0f0f] dark:text-white transition-colors duration-200">
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+  <body>
+    <p>Redirecting...</p>
   </body>
 </html>
