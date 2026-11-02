@@ -137,20 +137,41 @@ const ShowDetail: React.FC<ShowDetailProps> = ({
 
                 // Fetch watched episodes details
                 if (currentUser && show.media_type === 'tv') {
-                    const { data: wData, error: wError } = await supabase
-                        .from('episode_tracking')
-                        .select('season_number, episode_number')
-                        .eq('user_id', currentUser.id)
-                        .eq('show_id', show.id)
-                        .eq('is_watched', true);
-                    
-                    if (isMounted && !wError && wData) {
-                        setWatchedCount(wData.length);
-                        const watchedMap: Record<string, boolean> = {};
-                        wData.forEach(item => {
-                            watchedMap[`${item.season_number}-${item.episode_number}`] = true;
-                        });
-                        setWatchedEpisodes(watchedMap);
+                    if (currentUser.id === 'guest_user' || !isSupabaseConfigured) {
+                        try {
+                            const key = `watchlistey_episode_tracking_${show.id}`;
+                            const saved = JSON.parse(localStorage.getItem(key) || '{}');
+                            const watchedMap: Record<string, boolean> = {};
+                            let count = 0;
+                            Object.keys(saved).forEach(k => {
+                                if (saved[k]) {
+                                    watchedMap[k] = true;
+                                    count++;
+                                }
+                            });
+                            if (isMounted) {
+                                setWatchedCount(count);
+                                setWatchedEpisodes(watchedMap);
+                            }
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    } else {
+                        const { data: wData, error: wError } = await supabase
+                            .from('episode_tracking')
+                            .select('season_number, episode_number')
+                            .eq('user_id', currentUser.id)
+                            .eq('show_id', show.id)
+                            .eq('is_watched', true);
+                        
+                        if (isMounted && !wError && wData) {
+                            setWatchedCount(wData.length);
+                            const watchedMap: Record<string, boolean> = {};
+                            wData.forEach(item => {
+                                watchedMap[`${item.season_number}-${item.episode_number}`] = true;
+                            });
+                            setWatchedEpisodes(watchedMap);
+                        }
                     }
                 }
             } else {

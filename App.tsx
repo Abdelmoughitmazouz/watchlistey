@@ -46,9 +46,73 @@ import { RatingsGraphPage } from './pages/RatingsGraphPage';
 import { useTranslation } from 'react-i18next';
 import { currentUser as demoUser } from './constants';
 
+const LOCAL_STORAGE_GUEST_USER_KEY = 'watchlistey_guest_user_data';
+const LOCAL_STORAGE_AUTH_CACHE_KEY = 'watchlistey_cached_auth_user';
+
+const getInitialGuestUser = (): User => {
+    try {
+        const saved = localStorage.getItem(LOCAL_STORAGE_GUEST_USER_KEY);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            return {
+                id: 'guest_user',
+                username: 'guest',
+                name: 'Guest User',
+                email: '',
+                avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80',
+                cover_url: '',
+                title: 'Guest',
+                bio: '',
+                list: parsed.list || {},
+                favorites: parsed.favorites || {},
+                characters: parsed.characters || {}
+            };
+        }
+    } catch (e) {
+        console.error("Failed to load local guest user", e);
+    }
+    return {
+        id: 'guest_user',
+        username: 'guest',
+        name: 'Guest User',
+        email: '',
+        avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80',
+        cover_url: '',
+        title: 'Guest',
+        bio: '',
+        list: {},
+        favorites: {},
+        characters: {}
+    };
+};
+
+const saveGuestUserData = (userData: User) => {
+    if (userData.id === 'guest_user') {
+        try {
+            localStorage.setItem(LOCAL_STORAGE_GUEST_USER_KEY, JSON.stringify({
+                list: userData.list || {},
+                favorites: userData.favorites || {},
+                characters: userData.characters || {}
+            }));
+        } catch (e) {
+            console.error("Failed to save local guest user", e);
+        }
+    }
+};
+
 const App = () => {
     const { t, i18n } = useTranslation();
-    const [user, setUser] = useState<User | undefined>(undefined);
+    const [user, setUser] = useState<User>(() => {
+        try {
+            const cachedAuth = localStorage.getItem(LOCAL_STORAGE_AUTH_CACHE_KEY);
+            if (cachedAuth) {
+                return JSON.parse(cachedAuth);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+        return getInitialGuestUser();
+    });
     const [viewedProfile, setViewedProfile] = useState<User | undefined>(undefined);
     const [pathname, setPathname] = useState(window.location.pathname);
     const [shows, setShows] = useState<Show[]>([]);
@@ -108,12 +172,39 @@ const App = () => {
     }, [i18n.language]);
 
     useEffect(() => {
+        // Fetch session immediately on mount
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
+            if (session) {
+                const fullProfile = await ensureProfileExists(session.user);
+                if (fullProfile) {
+                    setUser(fullProfile);
+                    try {
+                        localStorage.setItem(LOCAL_STORAGE_AUTH_CACHE_KEY, JSON.stringify(fullProfile));
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+            }
+        });
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (session) {
                 const fullProfile = await ensureProfileExists(session.user);
-                if (fullProfile) setUser(fullProfile);
-            } else {
-                setUser(undefined);
+                if (fullProfile) {
+                    setUser(fullProfile);
+                    try {
+                        localStorage.setItem(LOCAL_STORAGE_AUTH_CACHE_KEY, JSON.stringify(fullProfile));
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+            } else if (event === 'SIGNED_OUT') {
+                try {
+                    localStorage.removeItem(LOCAL_STORAGE_AUTH_CACHE_KEY);
+                } catch (e) {
+                    console.error(e);
+                }
+                setUser(getInitialGuestUser());
             }
         });
 
@@ -211,7 +302,25 @@ const App = () => {
     }, [isDark]);
 
     const handleToggleEpisode = async (showId: number, seasonNumber: number, episodeNumber: number, isWatched: boolean) => {
-        if (!user || !isSupabaseConfigured) return false;
+        if (!user) return false;
+
+        if (user.id === 'guest_user' || !isSupabaseConfigured) {
+            try {
+                const key = `watchlistey_episode_tracking_${showId}`;
+                const saved = JSON.parse(localStorage.getItem(key) || '{}');
+                const epKey = `${seasonNumber}-${episodeNumber}`;
+                if (isWatched) {
+                    saved[epKey] = true;
+                } else {
+                    delete saved[epKey];
+                }
+                localStorage.setItem(key, JSON.stringify(saved));
+                return true;
+            } catch (e) {
+                console.error("Local episode toggle failed", e);
+                return false;
+            }
+        }
 
         try {
             if (isWatched) {
@@ -238,9 +347,6 @@ const App = () => {
                     });
                 if (error) throw error;
             }
-            
-            // Re-fetch progress to update the main list if needed
-            // (Optional, but helps keep things in sync)
             return true;
         } catch (e) {
             console.error("Episode toggle failed", e);
@@ -249,29 +355,25 @@ const App = () => {
     };
 
     const handleUpdateListStatus = async (showId: number, status: ListStatus | null, show?: Show, customAddedAt?: string, extraData?: Partial<ListItem>) => {
-        if (!user) return false;
-        
         // 1. Determine media type correctly
         let dbMediaType = show?.media_type || extraData?.media_type;
         
         // Try to find it from existing list if still missing
-        if (!dbMediaType && user.list?.[showId]) {
+        if (!dbMediaType && user?.list?.[showId]) {
             dbMediaType = user.list[showId].media_type;
         }
 
         // Check favorites too
-        if (!dbMediaType && user.favorites?.[showId]) {
+        if (!dbMediaType && user?.favorites?.[showId]) {
             dbMediaType = user.favorites[showId].media_type;
         }
         
         // Final fallback: Check show title patterns if show object is available
         if (!dbMediaType && show) {
-            // In our system, 'Show' is a mapped type where TMDB 'name' or 'title' becomes 'title'
-            // We use 'tv' as safe fallback if media_type is completely missing
             dbMediaType = show.media_type || 'tv';
         }
 
-        // Absolute fallback based on ID range (rough estimate but better than nothing)
+        // Absolute fallback based on ID range
         if (!dbMediaType) {
             dbMediaType = 'tv';
         }
@@ -280,14 +382,15 @@ const App = () => {
 
         // Update local user state for immediate response
         setUser(prev => {
-            if (!prev) return undefined;
-            const newList = { ...prev.list };
-            const newChars = { ...prev.characters };
+            const current = prev || getInitialGuestUser();
+            const newList = { ...current.list };
+            const newChars = { ...current.characters };
             
+            let updatedUser: User;
             if (dbMediaType === 'person') {
                 if (status === null) delete newChars[showId];
-                else newChars[showId] = { id: Date.now(), show_id: showId, person_id: showId, user_id: prev.id, status: status, added_at: timestamp, media_type: 'person', title: show?.title, poster_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), is_favorite: true } as any;
-                return { ...prev, characters: newChars };
+                else newChars[showId] = { id: Date.now(), show_id: showId, person_id: showId, user_id: current.id, status: status, added_at: timestamp, media_type: 'person', title: show?.title, poster_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), is_favorite: true } as any;
+                updatedUser = { ...current, characters: newChars };
             } else {
                 if (status === null) delete newList[showId];
                 else {
@@ -296,7 +399,7 @@ const App = () => {
                         ...existing,
                         id: existing.id || Date.now(), 
                         show_id: showId, 
-                        user_id: prev.id, 
+                        user_id: current.id, 
                         status: status, 
                         added_at: existing.added_at || timestamp, 
                         media_type: (dbMediaType as any), 
@@ -306,11 +409,23 @@ const App = () => {
                         ...extraData
                     } as ListItem;
                 }
-                return { ...prev, list: newList };
+                updatedUser = { ...current, list: newList };
             }
+
+            if (updatedUser.id === 'guest_user') {
+                saveGuestUserData(updatedUser);
+            } else {
+                try {
+                    localStorage.setItem(LOCAL_STORAGE_AUTH_CACHE_KEY, JSON.stringify(updatedUser));
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            return updatedUser;
         });
 
-        if (!isSupabaseConfigured) return true;
+        if (!isSupabaseConfigured || !user || user.id === 'guest_user') return true;
 
         try {
             if (status === null) {
@@ -484,19 +599,29 @@ const App = () => {
     };
 
     const handleToggleFavorite = async (show: Show) => {
-        if (!user) return;
         let dbMediaType = show.media_type || 'tv';
-        const isFav = !!user.favorites?.[show.id];
+        const isFav = !!user?.favorites?.[show.id];
         setUser(prev => {
-            if (!prev) return undefined;
-            const newFavs = { ...prev.favorites };
+            const current = prev || getInitialGuestUser();
+            const newFavs = { ...current.favorites };
             if (isFav) delete newFavs[show.id];
-            else newFavs[show.id] = { id: Date.now(), show_id: show.id, user_id: prev.id, status: 'Favorite', added_at: new Date().toISOString(), media_type: dbMediaType, title: show.title, poster_path: show.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), is_favorite: true };
-            const newList = { ...prev.list };
+            else newFavs[show.id] = { id: Date.now(), show_id: show.id, user_id: current.id, status: 'Favorite', added_at: new Date().toISOString(), media_type: dbMediaType, title: show.title, poster_path: show.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), is_favorite: true };
+            const newList = { ...current.list };
             if (newList[show.id]) newList[show.id] = { ...newList[show.id], is_favorite: !isFav };
-            return { ...prev, favorites: newFavs, list: newList };
+            const updatedUser = { ...current, favorites: newFavs, list: newList };
+
+            if (updatedUser.id === 'guest_user') {
+                saveGuestUserData(updatedUser);
+            } else {
+                try {
+                    localStorage.setItem(LOCAL_STORAGE_AUTH_CACHE_KEY, JSON.stringify(updatedUser));
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            return updatedUser;
         });
-        if (!isSupabaseConfigured) return;
+        if (!isSupabaseConfigured || !user || user.id === 'guest_user') return;
         try {
             if (isFav) await supabase.from('favorites').delete().match({ user_id: user.id, show_id: show.id });
             else {
@@ -605,7 +730,25 @@ const App = () => {
     return (
         <div className="min-h-screen bg-white dark:bg-[#0f0f0f] text-gray-900 dark:text-white transition-colors duration-200">
             {!['login', 'signup', 'forgot-password'].includes(currentRoute.rest) && (
-                <Header onNavigate={handleNavigate} isLoggedIn={!!user} onLogin={() => handleNavigate('/login')} onLogout={() => setUser(undefined)} user={user} isDark={isDark} toggleTheme={() => setIsDark(!isDark)} hasHero={hasHero} notifications={notifications} />
+                <Header 
+                    onNavigate={handleNavigate} 
+                    isLoggedIn={!!(user && user.id !== 'guest_user')} 
+                    onLogin={() => handleNavigate('/login')} 
+                    onLogout={async () => {
+                        await supabase.auth.signOut();
+                        try {
+                            localStorage.removeItem(LOCAL_STORAGE_AUTH_CACHE_KEY);
+                        } catch (e) {
+                            console.error(e);
+                        }
+                        setUser(getInitialGuestUser());
+                    }} 
+                    user={user && user.id !== 'guest_user' ? user : undefined} 
+                    isDark={isDark} 
+                    toggleTheme={() => setIsDark(!isDark)} 
+                    hasHero={hasHero} 
+                    notifications={notifications} 
+                />
             )}
             {renderContent()}
 
