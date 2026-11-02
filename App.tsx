@@ -184,6 +184,20 @@ const App = () => {
                         console.error(e);
                     }
                 }
+            } else {
+                const cachedAuth = localStorage.getItem(LOCAL_STORAGE_AUTH_CACHE_KEY);
+                if (cachedAuth) {
+                    try {
+                        const parsed = JSON.parse(cachedAuth);
+                        if (parsed && parsed.id && parsed.id !== 'guest_user') {
+                            localStorage.removeItem(LOCAL_STORAGE_AUTH_CACHE_KEY);
+                            setUser(getInitialGuestUser());
+                        }
+                    } catch (e) {
+                        localStorage.removeItem(LOCAL_STORAGE_AUTH_CACHE_KEY);
+                        setUser(getInitialGuestUser());
+                    }
+                }
             }
         });
 
@@ -428,166 +442,190 @@ const App = () => {
         if (!isSupabaseConfigured || !user || user.id === 'guest_user') return true;
 
         try {
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            const targetUserId = authUser?.id || (user && user.id !== 'guest_user' ? user.id : null);
+            if (!targetUserId) return true;
+
             if (status === null) {
-                 if (dbMediaType === 'person') await supabase.from('characters').delete().match({ user_id: user.id, person_id: showId });
-                 else await supabase.from('list_items').delete().match({ user_id: user.id, show_id: showId, media_type: dbMediaType });
+                 if (dbMediaType === 'person') await supabase.from('characters').delete().match({ user_id: targetUserId, person_id: showId });
+                 else await supabase.from('list_items').delete().match({ user_id: targetUserId, show_id: showId, media_type: dbMediaType });
             } else {
                  if (dbMediaType === 'person') {
-                     await supabase.from('characters').upsert({ user_id: user.id, person_id: showId, name: show?.title, profile_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), added_at: timestamp });
+                     await supabase.from('characters').upsert({ user_id: targetUserId, person_id: showId, name: show?.title, profile_path: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), added_at: timestamp });
                  } else {
+                     // Fetch missing show details if needed so title and poster are always saved
+                     let showDetailsToUse = show;
+                     if (!showDetailsToUse?.title) {
+                         try {
+                             const details = await getShowDetails(Number(showId), dbMediaType as 'movie' | 'tv');
+                             if (details) showDetailsToUse = details;
+                         } catch (e) {}
+                     }
+
+                     // IMPORTANT: list_items only contains: user_id, show_id, media_type, status, title, poster_path, backdrop_path, vote_average, release_date, added_at, updated_at
+                     // Any extra fields (like progress, rating, notes, custom_lists) cause PostgREST PGRST204 column not found errors!
                      const payload: any = { 
-                        user_id: user.id, 
+                        user_id: targetUserId, 
                         show_id: Number(showId), 
                         status: status, 
                         media_type: dbMediaType, 
-                        added_at: timestamp, // Always provide it to satisfy potential DB constraints
-                        updated_at: new Date().toISOString(),
-                        ...extraData
+                        added_at: timestamp,
+                        updated_at: new Date().toISOString()
                      };
                      
-                     if (show) { 
-                         payload.title = show.title; 
-                         payload.poster_path = show.image_url?.replace('https://image.tmdb.org/t/p/w500', ''); 
-                         payload.backdrop_path = show.backdrop_url?.replace('https://image.tmdb.org/t/p/w1280', '');
-                         payload.vote_average = show.rating; 
-                         payload.release_date = show.year ? `${show.year}-01-01` : null; 
+                     if (showDetailsToUse) { 
+                         if (showDetailsToUse.title) payload.title = showDetailsToUse.title; 
+                         if (showDetailsToUse.image_url) payload.poster_path = showDetailsToUse.image_url.replace('https://image.tmdb.org/t/p/w500', ''); 
+                         if (showDetailsToUse.backdrop_url) payload.backdrop_path = showDetailsToUse.backdrop_url.replace('https://image.tmdb.org/t/p/w1280', '').replace('https://image.tmdb.org/t/p/original', '');
+                         if (showDetailsToUse.rating !== undefined && showDetailsToUse.rating !== null) payload.vote_average = showDetailsToUse.rating; 
+                         if (showDetailsToUse.year) payload.release_date = `${showDetailsToUse.year}-01-01`; 
                      }
                      
-                     // 1. Update List
-                     // We try multiple conflict targets to be compatible with different possible DB constraints
-                     let { error: upsertError } = await supabase.from('list_items').upsert(payload, { onConflict: 'user_id, show_id' });
+                     // 1. Update List with exact unique constraint target without spaces
+                     const { error: upsertError } = await supabase.from('list_items').upsert(payload, { onConflict: 'user_id,show_id,media_type' });
                      
                      if (upsertError) {
-                        // Fallback retry with media_type in conflict target
-                        const { error: retryError } = await supabase.from('list_items').upsert(payload, { onConflict: 'user_id, show_id, media_type' });
-                        if (retryError) {
-                            console.error("Supabase upsert failed:", retryError);
-                            throw retryError;
+                        console.warn("Direct onConflict upsert failed, attempting match fallback:", upsertError);
+                        const { data: existingRow } = await supabase
+                            .from('list_items')
+                            .select('id')
+                            .match({ user_id: targetUserId, show_id: Number(showId), media_type: dbMediaType })
+                            .maybeSingle();
+
+                        if (existingRow) {
+                            await supabase
+                                .from('list_items')
+                                .update({
+                                    status: payload.status,
+                                    updated_at: payload.updated_at,
+                                    ...(payload.title ? { title: payload.title } : {}),
+                                    ...(payload.poster_path ? { poster_path: payload.poster_path } : {}),
+                                    ...(payload.vote_average !== undefined ? { vote_average: payload.vote_average } : {})
+                                })
+                                .eq('id', existingRow.id);
+                        } else {
+                            await supabase.from('list_items').insert(payload);
                         }
                      }
-                    // 2. Explicitly POST TO FEED (as requested)
-                    const actionMap: Record<string, string> = {
-                        'Watching': 'started_watching',
-                        'Completed': 'completed',
-                        'Plan to Watch': 'added_to_list',
-                        'Planning': 'added_to_list',
-                        'Paused': 'paused_watching',
-                        'Dropped': 'dropped',
-                        'Rewatching': 'rewatching'
-                    };
 
-                    const prevProgress = user.list?.[showId]?.progress || 0;
-                    const newProgress = extraData?.progress;
-                    const today = new Date().toISOString();
-                    
-                    const baseMetadata: any = {
-                        title: show?.title,
-                        image: show?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''),
-                        backdrop: show?.backdrop_url?.replace('https://image.tmdb.org/t/p/original', '')?.replace('https://image.tmdb.org/t/p/w1280', ''),
-                        mediaType: dbMediaType
-                    };
+                    // 2. Safely log to feed / user_activities in background without blocking list persistence
+                    try {
+                        const actionMap: Record<string, string> = {
+                            'Watching': 'started_watching',
+                            'Completed': 'completed',
+                            'Plan to Watch': 'added_to_list',
+                            'Planning': 'added_to_list',
+                            'Paused': 'paused_watching',
+                            'Dropped': 'dropped',
+                            'Rewatching': 'rewatching'
+                        };
 
-                    const activitiesToInsert: any[] = [];
+                        const prevProgress = user.list?.[showId]?.progress || 0;
+                        const newProgress = extraData?.progress;
+                        const today = new Date().toISOString();
+                        
+                        const baseMetadata: any = {
+                            title: showDetailsToUse?.title || show?.title,
+                            image: (showDetailsToUse || show)?.image_url?.replace('https://image.tmdb.org/t/p/w500', ''),
+                            backdrop: (showDetailsToUse || show)?.backdrop_url?.replace('https://image.tmdb.org/t/p/original', '')?.replace('https://image.tmdb.org/t/p/w1280', ''),
+                            mediaType: dbMediaType
+                        };
 
-                    if (dbMediaType === 'tv' && newProgress !== undefined && newProgress > prevProgress) {
-                        // Handle TV Episode progress (Individual activities)
-                        try {
-                            let fullShow = show;
-                            if (!fullShow?.seasons || fullShow.seasons.length === 0) {
-                                fullShow = await getShowDetails(showId, 'tv') || show;
-                            }
+                        const activitiesToInsert: any[] = [];
 
-                            if (fullShow?.seasons && fullShow.seasons.length > 0) {
-                                const trackingRows = [];
-                                const seasonCache = new Map<number, any>();
+                        if (dbMediaType === 'tv' && newProgress !== undefined && newProgress > prevProgress) {
+                            try {
+                                let fullShow = showDetailsToUse || show;
+                                if (!fullShow?.seasons || fullShow.seasons.length === 0) {
+                                    fullShow = await getShowDetails(showId, 'tv') || fullShow;
+                                }
 
-                                for (let i = prevProgress + 1; i <= newProgress; i++) {
-                                    // Map flat progress 'i' to season/episode
-                                    let currentProgress = 0;
-                                    let targetSeason = 1;
-                                    let targetEpisode = i;
-                                    
-                                    for (const s of fullShow.seasons) {
-                                        if (s.season_number === 0) continue;
-                                        if (i <= currentProgress + s.episode_count) {
-                                            targetSeason = s.season_number;
-                                            targetEpisode = i - currentProgress;
-                                            break;
+                                if (fullShow?.seasons && fullShow.seasons.length > 0) {
+                                    const trackingRows = [];
+                                    const seasonCache = new Map<number, any>();
+
+                                    for (let i = prevProgress + 1; i <= newProgress; i++) {
+                                        let currentProgress = 0;
+                                        let targetSeason = 1;
+                                        let targetEpisode = i;
+                                        
+                                        for (const s of fullShow.seasons) {
+                                            if (s.season_number === 0) continue;
+                                            if (i <= currentProgress + s.episode_count) {
+                                                targetSeason = s.season_number;
+                                                targetEpisode = i - currentProgress;
+                                                break;
+                                            }
+                                            currentProgress += s.episode_count;
                                         }
-                                        currentProgress += s.episode_count;
-                                    }
 
-                                    // Add to tracking
-                                    trackingRows.push({
-                                        user_id: user.id,
-                                        show_id: showId,
-                                        season_number: targetSeason,
-                                        episode_number: targetEpisode,
-                                        is_watched: true,
-                                        watched_at: today
-                                    });
-
-                                    // Prepare activity for this episode
-                                    if (!seasonCache.has(targetSeason)) {
-                                        const sDetails = await getSeasonDetails(showId, targetSeason);
-                                        seasonCache.set(targetSeason, sDetails);
-                                    }
-                                    const seasonData = seasonCache.get(targetSeason);
-                                    const epDetails = seasonData?.episodes?.find((e: any) => e.episode_number === targetEpisode);
-
-                                    activitiesToInsert.push({
-                                        user_id: user.id,
-                                        show_id: showId,
-                                        media_type: dbMediaType,
-                                        action: 'progress_updated',
-                                        metadata: {
-                                            ...baseMetadata,
-                                            progress: i,
-                                            episode_title: epDetails?.name,
-                                            episode_image: epDetails?.still_path,
+                                        trackingRows.push({
+                                            user_id: targetUserId,
+                                            show_id: showId,
                                             season_number: targetSeason,
-                                            episode_number: targetEpisode
+                                            episode_number: targetEpisode,
+                                            is_watched: true,
+                                            watched_at: today
+                                        });
+
+                                        if (!seasonCache.has(targetSeason)) {
+                                            const sDetails = await getSeasonDetails(showId, targetSeason);
+                                            seasonCache.set(targetSeason, sDetails);
                                         }
-                                    });
-                                }
+                                        const seasonData = seasonCache.get(targetSeason);
+                                        const epDetails = seasonData?.episodes?.find((e: any) => e.episode_number === targetEpisode);
 
-                                // Upsert tracking
-                                if (trackingRows.length > 0) {
-                                    await supabase.from('episode_tracking').upsert(trackingRows, { 
-                                        onConflict: 'user_id, show_id, season_number, episode_number' 
-                                    });
+                                        activitiesToInsert.push({
+                                            user_id: targetUserId,
+                                            show_id: showId,
+                                            media_type: dbMediaType,
+                                            action: 'progress_updated',
+                                            metadata: {
+                                                ...baseMetadata,
+                                                progress: i,
+                                                episode_title: epDetails?.name,
+                                                episode_image: epDetails?.still_path,
+                                                season_number: targetSeason,
+                                                episode_number: targetEpisode
+                                            }
+                                        });
+                                    }
+
+                                    if (trackingRows.length > 0) {
+                                        await supabase.from('episode_tracking').upsert(trackingRows, { 
+                                            onConflict: 'user_id, show_id, season_number, episode_number' 
+                                        });
+                                    }
                                 }
+                            } catch (e) {
+                                console.error("Error processing episode activities:", e);
                             }
-                        } catch (e) {
-                            console.error("Error processing episode activities:", e);
                         }
-                    }
 
-                    // Handle Status-based activities (Completed, Planning, etc.)
-                    const statusAction = actionMap[status];
-                    if (status === 'Completed') {
-                        // Always add completed activity if status is Completed
-                        activitiesToInsert.push({
-                            user_id: user.id,
-                            show_id: showId,
-                            media_type: dbMediaType,
-                            action: 'completed',
-                            metadata: baseMetadata
-                        });
-                    } else if (activitiesToInsert.length === 0 && statusAction) {
-                        // Only add status action if no episode activities were added 
-                        // (e.g. just moved to Planning, or moved to Watching without progress change)
-                        activitiesToInsert.push({
-                            user_id: user.id,
-                            show_id: showId,
-                            media_type: dbMediaType,
-                            action: statusAction,
-                            metadata: baseMetadata
-                        });
-                    }
+                        const statusAction = actionMap[status];
+                        if (status === 'Completed') {
+                            activitiesToInsert.push({
+                                user_id: targetUserId,
+                                show_id: showId,
+                                media_type: dbMediaType,
+                                action: 'completed',
+                                metadata: baseMetadata
+                            });
+                        } else if (activitiesToInsert.length === 0 && statusAction) {
+                            activitiesToInsert.push({
+                                user_id: targetUserId,
+                                show_id: showId,
+                                media_type: dbMediaType,
+                                action: statusAction,
+                                metadata: baseMetadata
+                            });
+                        }
 
-                    if (activitiesToInsert.length > 0 && show) {
-                        await supabase.from('user_activities').insert(activitiesToInsert);
+                        if (activitiesToInsert.length > 0 && (showDetailsToUse || show)) {
+                            await supabase.from('user_activities').insert(activitiesToInsert);
+                        }
+                    } catch (activityErr) {
+                        console.error("Non-fatal: Activity feed insertion failed", activityErr);
                     }
                  }
             }
@@ -623,10 +661,23 @@ const App = () => {
         });
         if (!isSupabaseConfigured || !user || user.id === 'guest_user') return;
         try {
-            if (isFav) await supabase.from('favorites').delete().match({ user_id: user.id, show_id: show.id });
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            const targetUserId = authUser?.id || user.id;
+            if (!targetUserId) return;
+
+            if (isFav) await supabase.from('favorites').delete().match({ user_id: targetUserId, show_id: show.id });
             else {
-                const payload: any = { user_id: user.id, show_id: show.id, media_type: dbMediaType, title: show.title, poster_path: show.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), vote_average: show.rating, release_date: show.year ? `${show.year}-01-01` : null, added_at: new Date().toISOString() };
-                await supabase.from('favorites').upsert(payload);
+                const payload: any = { 
+                    user_id: targetUserId, 
+                    show_id: show.id, 
+                    media_type: dbMediaType, 
+                    title: show.title, 
+                    poster_path: show.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), 
+                    vote_average: show.rating, 
+                    release_date: show.year ? `${show.year}-01-01` : null, 
+                    added_at: new Date().toISOString() 
+                };
+                await supabase.from('favorites').upsert(payload, { onConflict: 'user_id,show_id,media_type' });
             }
         } catch (e) { console.error(e); }
     };

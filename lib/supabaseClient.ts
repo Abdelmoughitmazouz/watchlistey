@@ -235,9 +235,12 @@ export const getProfileById = async (userId: string): Promise<User | null> => {
     if (!isSupabaseConfigured) return null;
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (error || !data) return null;
-    const { data: listData } = await supabase.from('list_items').select('*').eq('user_id', userId);
-    const { data: favData } = await supabase.from('favorites').select('*').eq('user_id', userId);
-    const { data: charData } = await supabase.from('characters').select('*').eq('user_id', userId);
+    const { data: listData, error: listErr } = await supabase.from('list_items').select('*').eq('user_id', userId);
+    if (listErr) console.error("Error fetching list_items:", listErr);
+    const { data: favData, error: favErr } = await supabase.from('favorites').select('*').eq('user_id', userId);
+    if (favErr) console.error("Error fetching favorites:", favErr);
+    const { data: charData, error: charErr } = await supabase.from('characters').select('*').eq('user_id', userId);
+    if (charErr) console.error("Error fetching characters:", charErr);
     
     const list: Record<number, ListItem> = {};
     if (listData) {
