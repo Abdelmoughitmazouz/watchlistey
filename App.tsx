@@ -46,30 +46,31 @@ import { RatingsGraphPage } from './pages/RatingsGraphPage';
 import { useTranslation } from 'react-i18next';
 import { currentUser as demoUser } from './constants';
 
-const LOCAL_STORAGE_GUEST_USER_KEY = 'watchlistey_guest_user_data';
-const LOCAL_STORAGE_AUTH_CACHE_KEY = 'watchlistey_cached_auth_user';
+const LOCAL_STORAGE_USER_DATA_KEY = 'watchlistey_persistent_user_data';
 
-const getInitialGuestUser = (): User => {
+const getInitialUser = (): User => {
     try {
-        const saved = localStorage.getItem(LOCAL_STORAGE_GUEST_USER_KEY);
+        const saved = localStorage.getItem(LOCAL_STORAGE_USER_DATA_KEY) 
+            || localStorage.getItem('watchlistey_cached_auth_user') 
+            || localStorage.getItem('watchlistey_guest_user_data');
         if (saved) {
             const parsed = JSON.parse(saved);
             return {
-                id: 'guest_user',
-                username: 'guest',
-                name: 'Guest User',
-                email: '',
-                avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80',
-                cover_url: '',
-                title: 'Guest',
-                bio: '',
+                id: parsed.id || 'guest_user',
+                username: parsed.username || 'guest',
+                name: parsed.name || 'Guest User',
+                email: parsed.email || '',
+                avatar_url: parsed.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80',
+                cover_url: parsed.cover_url || '',
+                title: parsed.title || 'Guest',
+                bio: parsed.bio || '',
                 list: parsed.list || {},
                 favorites: parsed.favorites || {},
                 characters: parsed.characters || {}
             };
         }
     } catch (e) {
-        console.error("Failed to load local guest user", e);
+        console.error("Failed to load local user", e);
     }
     return {
         id: 'guest_user',
@@ -86,33 +87,26 @@ const getInitialGuestUser = (): User => {
     };
 };
 
-const saveGuestUserData = (userData: User) => {
-    if (userData.id === 'guest_user') {
-        try {
-            localStorage.setItem(LOCAL_STORAGE_GUEST_USER_KEY, JSON.stringify({
-                list: userData.list || {},
-                favorites: userData.favorites || {},
-                characters: userData.characters || {}
-            }));
-        } catch (e) {
-            console.error("Failed to save local guest user", e);
+const saveUserDataToLocal = (userData: User) => {
+    try {
+        localStorage.setItem(LOCAL_STORAGE_USER_DATA_KEY, JSON.stringify(userData));
+        // Keep backwards compatible keys synchronized
+        localStorage.setItem('watchlistey_guest_user_data', JSON.stringify({
+            list: userData.list || {},
+            favorites: userData.favorites || {},
+            characters: userData.characters || {}
+        }));
+        if (userData.id && userData.id !== 'guest_user') {
+            localStorage.setItem('watchlistey_cached_auth_user', JSON.stringify(userData));
         }
+    } catch (e) {
+        console.error("Failed to save local user", e);
     }
 };
 
 const App = () => {
     const { t, i18n } = useTranslation();
-    const [user, setUser] = useState<User>(() => {
-        try {
-            const cachedAuth = localStorage.getItem(LOCAL_STORAGE_AUTH_CACHE_KEY);
-            if (cachedAuth) {
-                return JSON.parse(cachedAuth);
-            }
-        } catch (e) {
-            console.error(e);
-        }
-        return getInitialGuestUser();
-    });
+    const [user, setUser] = useState<User>(() => getInitialUser());
     const [viewedProfile, setViewedProfile] = useState<User | undefined>(undefined);
     const [pathname, setPathname] = useState(window.location.pathname);
     const [shows, setShows] = useState<Show[]>([]);
@@ -177,27 +171,38 @@ const App = () => {
             if (session) {
                 const fullProfile = await ensureProfileExists(session.user);
                 if (fullProfile) {
-                    setUser(fullProfile);
-                    try {
-                        localStorage.setItem(LOCAL_STORAGE_AUTH_CACHE_KEY, JSON.stringify(fullProfile));
-                    } catch (e) {
-                        console.error(e);
+                    const localUser = getInitialUser();
+                    const localList = localUser.list || {};
+                    const mergedList = { ...fullProfile.list, ...localList };
+                    const mergedProfile = { ...fullProfile, list: mergedList };
+                    setUser(mergedProfile);
+                    saveUserDataToLocal(mergedProfile);
+
+                    // Sync any local offline items to Supabase
+                    if (Object.keys(localList).length > 0) {
+                        const itemsToSync = Object.values(localList).map((item: ListItem) => ({
+                            user_id: session.user.id,
+                            show_id: Number(item.show_id),
+                            status: item.status || 'Planning',
+                            media_type: item.media_type || 'tv',
+                            title: item.title || '',
+                            poster_path: item.poster_path || '',
+                            vote_average: item.rating || (item as any).vote_average || 0,
+                            release_date: (item as any).release_date || null,
+                            added_at: item.added_at || new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        }));
+                        if (itemsToSync.length > 0) {
+                            supabase.from('list_items').upsert(itemsToSync, { onConflict: 'user_id,show_id,media_type' }).then(res => {
+                                if (res.error) console.warn("Background list sync to Supabase:", res.error);
+                            });
+                        }
                     }
                 }
             } else {
-                const cachedAuth = localStorage.getItem(LOCAL_STORAGE_AUTH_CACHE_KEY);
-                if (cachedAuth) {
-                    try {
-                        const parsed = JSON.parse(cachedAuth);
-                        if (parsed && parsed.id && parsed.id !== 'guest_user') {
-                            localStorage.removeItem(LOCAL_STORAGE_AUTH_CACHE_KEY);
-                            setUser(getInitialGuestUser());
-                        }
-                    } catch (e) {
-                        localStorage.removeItem(LOCAL_STORAGE_AUTH_CACHE_KEY);
-                        setUser(getInitialGuestUser());
-                    }
-                }
+                // Not logged in: ensure local items are loaded and preserved
+                const localUser = getInitialUser();
+                setUser(localUser);
             }
         });
 
@@ -205,20 +210,20 @@ const App = () => {
             if (session) {
                 const fullProfile = await ensureProfileExists(session.user);
                 if (fullProfile) {
-                    setUser(fullProfile);
-                    try {
-                        localStorage.setItem(LOCAL_STORAGE_AUTH_CACHE_KEY, JSON.stringify(fullProfile));
-                    } catch (e) {
-                        console.error(e);
-                    }
+                    const localUser = getInitialUser();
+                    const localList = localUser.list || {};
+                    const mergedList = { ...fullProfile.list, ...localList };
+                    const mergedProfile = { ...fullProfile, list: mergedList };
+                    setUser(mergedProfile);
+                    saveUserDataToLocal(mergedProfile);
                 }
             } else if (event === 'SIGNED_OUT') {
-                try {
-                    localStorage.removeItem(LOCAL_STORAGE_AUTH_CACHE_KEY);
-                } catch (e) {
-                    console.error(e);
-                }
-                setUser(getInitialGuestUser());
+                const guestUser = getInitialUser();
+                guestUser.id = 'guest_user';
+                guestUser.username = 'guest';
+                guestUser.name = 'Guest User';
+                setUser(guestUser);
+                saveUserDataToLocal(guestUser);
             }
         });
 
@@ -396,7 +401,7 @@ const App = () => {
 
         // Update local user state for immediate response
         setUser(prev => {
-            const current = prev || getInitialGuestUser();
+            const current = prev || getInitialUser();
             const newList = { ...current.list };
             const newChars = { ...current.characters };
             
@@ -426,25 +431,19 @@ const App = () => {
                 updatedUser = { ...current, list: newList };
             }
 
-            if (updatedUser.id === 'guest_user') {
-                saveGuestUserData(updatedUser);
-            } else {
-                try {
-                    localStorage.setItem(LOCAL_STORAGE_AUTH_CACHE_KEY, JSON.stringify(updatedUser));
-                } catch (e) {
-                    console.error(e);
-                }
-            }
-
+            saveUserDataToLocal(updatedUser);
             return updatedUser;
         });
 
-        if (!isSupabaseConfigured || !user || user.id === 'guest_user') return true;
+        if (!isSupabaseConfigured) return true;
 
         try {
-            const { data: { user: authUser } } = await supabase.auth.getUser();
-            const targetUserId = authUser?.id || (user && user.id !== 'guest_user' ? user.id : null);
-            if (!targetUserId) return true;
+            const { data: { session } } = await supabase.auth.getSession();
+            const targetUserId = session?.user?.id;
+            if (!targetUserId) {
+                // Saved locally in persistent browser storage
+                return true;
+            }
 
             if (status === null) {
                  if (dbMediaType === 'person') await supabase.from('characters').delete().match({ user_id: targetUserId, person_id: showId });
@@ -640,7 +639,7 @@ const App = () => {
         let dbMediaType = show.media_type || 'tv';
         const isFav = !!user?.favorites?.[show.id];
         setUser(prev => {
-            const current = prev || getInitialGuestUser();
+            const current = prev || getInitialUser();
             const newFavs = { ...current.favorites };
             if (isFav) delete newFavs[show.id];
             else newFavs[show.id] = { id: Date.now(), show_id: show.id, user_id: current.id, status: 'Favorite', added_at: new Date().toISOString(), media_type: dbMediaType, title: show.title, poster_path: show.image_url?.replace('https://image.tmdb.org/t/p/w500', ''), is_favorite: true };
@@ -648,21 +647,13 @@ const App = () => {
             if (newList[show.id]) newList[show.id] = { ...newList[show.id], is_favorite: !isFav };
             const updatedUser = { ...current, favorites: newFavs, list: newList };
 
-            if (updatedUser.id === 'guest_user') {
-                saveGuestUserData(updatedUser);
-            } else {
-                try {
-                    localStorage.setItem(LOCAL_STORAGE_AUTH_CACHE_KEY, JSON.stringify(updatedUser));
-                } catch (e) {
-                    console.error(e);
-                }
-            }
+            saveUserDataToLocal(updatedUser);
             return updatedUser;
         });
-        if (!isSupabaseConfigured || !user || user.id === 'guest_user') return;
+        if (!isSupabaseConfigured) return;
         try {
-            const { data: { user: authUser } } = await supabase.auth.getUser();
-            const targetUserId = authUser?.id || user.id;
+            const { data: { session } } = await supabase.auth.getSession();
+            const targetUserId = session?.user?.id;
             if (!targetUserId) return;
 
             if (isFav) await supabase.from('favorites').delete().match({ user_id: targetUserId, show_id: show.id });
@@ -788,11 +779,16 @@ const App = () => {
                     onLogout={async () => {
                         await supabase.auth.signOut();
                         try {
-                            localStorage.removeItem(LOCAL_STORAGE_AUTH_CACHE_KEY);
+                            localStorage.removeItem('watchlistey_cached_auth_user');
                         } catch (e) {
                             console.error(e);
                         }
-                        setUser(getInitialGuestUser());
+                        const guest = getInitialUser();
+                        guest.id = 'guest_user';
+                        guest.username = 'guest';
+                        guest.name = 'Guest User';
+                        setUser(guest);
+                        saveUserDataToLocal(guest);
                     }} 
                     user={user && user.id !== 'guest_user' ? user : undefined} 
                     isDark={isDark} 
